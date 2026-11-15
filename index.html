@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Midnight Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Pirata+One&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --ink:#0b080e; --night:#120e17; --panel:#1a1420; --panel2:#231b2b; --line:#3a2e44;
+  --wood:#4a2e1c; --wood-hi:#6b4428; --wood-lo:#24150c;
+  --gold:#d4ad55; --gold-dim:#8a6a2a; --parch:#eadfca; --parch-dim:#b3a389;
+  --blood:#7a1f2b; --moss:#2e4a3a;
+  --pixel:'Pixelify Sans', 'Courier New', monospace;
+  --serif:'IM Fell English', Georgia, 'Times New Roman', serif;
+  --gothic:'Pirata One', 'IM Fell English', Georgia, serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; color:var(--parch); font-family:var(--serif); font-size:18px; line-height:1.45;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(122,31,43,.25), transparent 60%),
+    radial-gradient(ellipse at 50% 120%, rgba(46,74,58,.18), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 2px, transparent 2px 6px),
+    var(--night);
+  min-height:100vh;
+}
+::selection{background:var(--blood);color:var(--parch)}
+button{font:inherit;color:inherit}
+a{color:var(--gold)}
+
+/* ---------- chunky pixel frame (Stardew-ish) ---------- */
+.frame{
+  background:var(--panel);
+  border:3px solid var(--wood-lo);
+  box-shadow:0 0 0 3px var(--gold-dim), 0 0 0 6px var(--wood-lo), 0 14px 40px rgba(0,0,0,.65);
+  border-radius:2px;
+}
+.btn{
+  font-family:var(--pixel); font-size:15px; letter-spacing:.3px;
+  background:var(--wood); color:var(--parch);
+  border:2px solid var(--wood-lo); border-radius:2px;
+  box-shadow:inset 0 2px 0 var(--wood-hi), inset 0 -3px 0 var(--wood-lo), 0 2px 0 #000;
+  padding:7px 12px 9px; cursor:pointer; white-space:nowrap;
+  display:inline-flex; align-items:center; gap:6px; text-decoration:none;
+}
+.btn:hover{filter:brightness(1.15)}
+.btn:active{transform:translateY(2px); box-shadow:inset 0 2px 0 var(--wood-hi), inset 0 -1px 0 var(--wood-lo)}
+.btn:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+.btn.gold{background:var(--gold-dim); color:#1a1006; box-shadow:inset 0 2px 0 var(--gold), inset 0 -3px 0 #5a4418, 0 2px 0 #000}
+.btn.blood{background:var(--blood); box-shadow:inset 0 2px 0 #a33445, inset 0 -3px 0 #4a1019, 0 2px 0 #000}
+.btn.moss{background:var(--moss); box-shadow:inset 0 2px 0 #44664f, inset 0 -3px 0 #1a2c22, 0 2px 0 #000}
+.btn.ghost{background:transparent; box-shadow:none; border-color:var(--line)}
+.btn[disabled]{opacity:.55; cursor:wait}
+.btn.icon{padding:7px 10px 9px}
+
+/* ---------- header ---------- */
+header.top{
+  max-width:1180px; margin:0 auto; padding:22px 18px 10px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;
+}
+.brand h1{
+  font-family:var(--gothic); font-weight:400; font-size:clamp(38px,6vw,60px); line-height:1; margin:0;
+  color:var(--gold); text-shadow:0 0 18px rgba(212,173,85,.25), 3px 3px 0 #000;
+}
+.brand p{margin:6px 0 0; font-style:italic; color:var(--parch-dim)}
+.controls{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.vol{display:flex; align-items:center; gap:6px; font-family:var(--pixel); font-size:13px; color:var(--parch-dim)}
+input[type=range]{accent-color:var(--gold); width:80px}
+
+/* ---------- list views (level / subject) ---------- */
+.shelf-nav{
+  position:sticky; top:0; z-index:30;
+  background:linear-gradient(rgba(11,8,14,.96), rgba(11,8,14,.9));
+  backdrop-filter:blur(6px);
+  border-top:1px solid #000; border-bottom:2px solid var(--gold-dim);
+  box-shadow:0 6px 20px rgba(0,0,0,.5);
+}
+.shelf-nav .inner{max-width:1180px; margin:0 auto; padding:8px 18px 10px; display:grid; gap:6px}
+.lv-row{display:grid; grid-template-columns:86px 1fr; align-items:center; gap:10px}
+.lv-label{font-family:var(--pixel); font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--gold-dim)}
+.listview{
+  list-style:none; margin:0; padding:4px 2px 6px; display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x proximity;
+  scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
+}
+.listview li{scroll-snap-align:start; flex:0 0 auto}
+.chip{
+  font-family:var(--pixel); font-size:14px; cursor:pointer;
+  background:var(--panel2); color:var(--parch); border:2px solid var(--line); border-radius:2px;
+  padding:4px 10px 5px; display:flex; gap:8px; align-items:center;
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.4);
+}
+.chip:hover{border-color:var(--gold-dim)}
+.chip .n{font-size:12px; color:var(--parch-dim); background:rgba(0,0,0,.35); padding:0 5px; border-radius:2px}
+.chip[aria-pressed=true]{background:var(--gold-dim); color:#160e05; border-color:var(--gold); box-shadow:inset 0 2px 0 var(--gold), inset 0 -2px 0 #5a4418}
+.chip[aria-pressed=true] .n{color:#160e05; background:rgba(255,255,255,.25)}
+.search-row{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:96px}
+.search-row input{flex:1 1 220px}
+.search-row select{flex:0 0 auto; width:auto}
+
+/* ---------- forms ---------- */
+input[type=text],input[type=email],input[type=password],input[type=url],input[type=search],select,textarea{
+  width:100%; background:#0e0a12; color:var(--parch); border:2px solid var(--line); border-radius:2px;
+  padding:8px 10px; font-family:var(--serif); font-size:17px;
+}
+input::placeholder,textarea::placeholder{color:#6f6378; font-style:italic}
+select{font-family:var(--pixel); font-size:14px}
+textarea{min-height:90px; resize:vertical}
+label.f{display:grid; gap:4px}
+label.f > span{font-family:var(--pixel); font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--gold-dim)}
+label.f > span em{font-style:normal; color:var(--blood)}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.form{display:grid; gap:12px}
+.filebox{border:2px dashed var(--line); padding:10px; display:grid; gap:6px; background:rgba(0,0,0,.2)}
+.filebox input[type=file]{font-family:var(--pixel); font-size:13px; color:var(--parch-dim)}
+.filebox input[type=file]::file-selector-button{font-family:var(--pixel); background:var(--wood); color:var(--parch); border:2px solid var(--wood-lo); padding:4px 10px; margin-right:10px; cursor:pointer}
+.or{font-family:var(--pixel); font-size:12px; color:var(--parch-dim); text-align:center}
+.hp{position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden}
+.small{font-size:14px; color:var(--parch-dim)}
+
+/* ---------- scene ---------- */
+main{max-width:1180px; margin:0 auto; padding:22px 18px 60px}
+.scene-wrap{position:relative; width:100%; max-width:1000px; margin:0 auto; aspect-ratio:16/9; overflow:hidden; background:#000; user-select:none; -webkit-user-select:none; touch-action:manipulation}
+#scene{width:100%; height:100%; display:block; image-rendering:pixelated; image-rendering:crisp-edges; cursor:pointer}
+.nametag{
+  position:absolute; transform:translate(-50%,-100%); pointer-events:none;
+  font-family:var(--pixel); font-size:clamp(10px,1.3vw,14px); color:var(--parch);
+  background:rgba(11,8,14,.75); border:1px solid var(--gold-dim); padding:0 6px; white-space:nowrap;
+}
+.prompt{
+  position:absolute; left:50%; bottom:12px; transform:translateX(-50%);
+  font-family:var(--pixel); font-size:clamp(12px,1.6vw,16px);
+  background:#1c130c; color:var(--parch); border:3px solid var(--wood-lo);
+  box-shadow:0 0 0 2px var(--gold-dim), 0 6px 18px rgba(0,0,0,.6);
+  padding:6px 14px 8px; max-width:92%; text-align:center; cursor:pointer; display:none;
+}
+.prompt kbd{font-family:var(--pixel); background:var(--gold-dim); color:#160e05; padding:0 5px; margin-right:6px; border-radius:2px}
+.prompt.show{display:block}
+.scene-hint{font-family:var(--pixel); font-size:13px; color:var(--parch-dim); text-align:center; margin:14px 0 0}
+
+/* ---------- notes ---------- */
+.sec-head{display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin:44px 0 16px}
+.sec-head h2{font-family:var(--gothic); font-weight:400; font-size:38px; margin:0; color:var(--gold); text-shadow:2px 2px 0 #000}
+.sec-head .meta{font-family:var(--pixel); font-size:14px; color:var(--parch-dim)}
+.notes{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px}
+.tome{
+  display:grid; grid-template-columns:22px 1fr; text-align:left; cursor:pointer; padding:0;
+  background:linear-gradient(180deg,#221a29,#1a1420); border:2px solid #000; border-radius:2px 6px 6px 2px;
+  box-shadow:0 0 0 2px var(--line), 4px 6px 0 rgba(0,0,0,.45); transition:transform .12s ease, box-shadow .12s ease;
+  min-height:170px;
+}
+.tome:hover{transform:translateY(-3px) rotate(-.4deg); box-shadow:0 0 0 2px var(--gold-dim), 6px 10px 0 rgba(0,0,0,.5)}
+.tome .spine{
+  border-right:2px solid #000;
+  background-image:
+    linear-gradient(transparent 14px, var(--gold-dim) 14px 17px, transparent 17px calc(100% - 17px), var(--gold-dim) calc(100% - 17px) calc(100% - 14px), transparent calc(100% - 14px)),
+    linear-gradient(90deg, rgba(255,255,255,.12), transparent 40%, rgba(0,0,0,.35));
+}
+.tome .body{padding:12px 14px 12px; display:flex; flex-direction:column; gap:6px}
+.tome .tags{font-family:var(--pixel); font-size:12px; color:var(--gold-dim); text-transform:uppercase; letter-spacing:.8px}
+.tome h3{margin:0; font-weight:400; font-size:21px; line-height:1.2; color:var(--parch)}
+.tome p{margin:0; font-size:15px; color:var(--parch-dim); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.tome .foot{margin-top:auto; display:flex; justify-content:space-between; gap:8px; font-family:var(--pixel); font-size:12px; color:#8e8197}
+.tome .foot b{color:var(--parch-dim); font-weight:400}
+.empty{grid-column:1/-1; text-align:center; padding:50px 20px; font-style:italic; color:var(--parch-dim); border:2px dashed var(--line)}
+.empty .btn{margin-top:14px; font-style:normal}
+
+/* ---------- dialogs ---------- */
+dialog{
+  color:var(--parch); padding:0; width:min(640px, calc(100vw - 28px)); max-height:calc(100vh - 40px);
+}
+dialog::backdrop{background:rgba(5,3,8,.78); backdrop-filter:blur(2px)}
+.dlg-head{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px 10px; border-bottom:2px solid var(--line); background:var(--panel2)}
+.dlg-head h2{font-family:var(--gothic); font-weight:400; margin:0; font-size:30px; color:var(--gold)}
+.dlg-body{padding:16px 18px 18px; overflow:auto; max-height:calc(100vh - 140px)}
+.dlg-foot{display:flex; justify-content:flex-end; gap:8px; padding-top:6px; flex-wrap:wrap}
+.lead{margin:0 0 12px; font-style:italic; color:var(--parch-dim)}
+
+/* wardrobe */
+.wardrobe{display:grid; grid-template-columns:180px 1fr; gap:18px}
+.mirror{
+  display:grid; place-items:center; gap:8px; padding:14px 10px;
+  background:radial-gradient(circle at 50% 40%, #2b2133, #120d16 70%); border:3px solid var(--wood-lo); box-shadow:0 0 0 2px var(--gold-dim) inset;
+}
+#mirrorCanvas{width:128px; height:256px; image-rendering:pixelated}
+.turn{display:flex; gap:6px}
+.opts{display:grid; gap:10px}
+.opt{display:grid; grid-template-columns:96px 1fr; align-items:center; gap:8px}
+.opt > span{font-family:var(--pixel); font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--gold-dim)}
+.cycler{display:flex; align-items:center; gap:6px}
+.cycler output{flex:1; text-align:center; font-family:var(--pixel); font-size:15px; background:#0e0a12; border:2px solid var(--line); padding:4px 6px}
+.swatches{display:flex; flex-wrap:wrap; gap:6px}
+.sw{width:24px; height:24px; border:2px solid #000; box-shadow:0 0 0 2px var(--line); cursor:pointer; padding:0; border-radius:1px}
+.sw[aria-pressed=true]{box-shadow:0 0 0 2px var(--gold); transform:scale(1.08)}
+
+/* note detail */
+.detail-tags{font-family:var(--pixel); font-size:13px; color:var(--gold-dim); text-transform:uppercase; letter-spacing:1px}
+.detail-desc{white-space:pre-wrap; margin:12px 0; color:var(--parch)}
+.detail-meta{font-family:var(--pixel); font-size:13px; color:var(--parch-dim); display:grid; gap:3px; border-top:1px dashed var(--line); padding-top:10px}
+
+/* tip jar */
+.tip{display:grid; gap:14px; justify-items:center; text-align:center}
+.tip .qr{width:min(240px,70vw); background:#fff; padding:10px; border:3px solid var(--wood-lo); box-shadow:0 0 0 2px var(--gold-dim)}
+.tip .qr img{display:block; width:100%; height:auto; image-rendering:auto}
+.tip .fine{font-size:14px; font-style:italic; color:var(--parch-dim)}
+.tng{background:#0b5bd3; box-shadow:inset 0 2px 0 #3d86f0, inset 0 -3px 0 #063a8a, 0 2px 0 #000; border-color:#04285e; font-size:16px; padding:9px 16px 11px}
+
+/* librarian */
+.tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px}
+.tabs .btn[aria-selected=true]{background:var(--gold-dim); color:#160e05; box-shadow:inset 0 2px 0 var(--gold), inset 0 -3px 0 #5a4418}
+.ledger{display:grid; gap:10px}
+.entry{border:2px solid var(--line); background:rgba(0,0,0,.25); padding:10px 12px; display:grid; gap:6px}
+.entry .t{font-size:18px}
+.entry .m{font-family:var(--pixel); font-size:12px; color:var(--parch-dim)}
+.entry .d{font-size:14px; color:var(--parch-dim); white-space:pre-wrap}
+.entry .a{display:flex; gap:6px; flex-wrap:wrap}
+.entry .btn{font-size:13px; padding:4px 9px 6px}
+
+.demo-banner{
+  max-width:1180px; margin:10px auto 0; padding:6px 18px; font-family:var(--pixel); font-size:13px; color:#160e05;
+  background:repeating-linear-gradient(45deg, var(--gold-dim) 0 10px, #9c7a30 10px 20px); text-align:center; display:none;
+}
+.demo-banner.show{display:block}
+
+/* toasts */
+#toasts{position:fixed; right:16px; bottom:16px; display:grid; gap:8px; z-index:100; max-width:min(380px, calc(100vw - 32px))}
+.toast{font-family:var(--pixel); font-size:14px; background:#1c130c; border:3px solid var(--wood-lo); box-shadow:0 0 0 2px var(--gold-dim), 0 8px 20px rgba(0,0,0,.6); padding:8px 12px; animation:pop .2s ease-out}
+.toast.err{box-shadow:0 0 0 2px var(--blood), 0 8px 20px rgba(0,0,0,.6)}
+@keyframes pop{from{transform:translateY(10px); opacity:0}}
+
+footer{max-width:1180px; margin:0 auto; padding:20px 18px 40px; text-align:center; font-style:italic; color:#7d7086; font-size:15px}
+
+@media (max-width:720px){
+  .shelf-nav{position:static}
+  .lv-row{grid-template-columns:1fr; gap:2px}
+  .search-row{margin-left:0}
+  .wardrobe{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .opt{grid-template-columns:82px 1fr}
+  body{font-size:17px}
+}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} .tome{transition:none} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1 id="siteTitle">The Midnight Library</h1>
+    <p id="siteSub">Notes gathered by candlelight</p>
+  </div>
+  <div class="controls">
+    <button class="btn icon" id="musicBtn" aria-pressed="false" title="Music on / off">♪ <span id="musicLbl">Music</span></button>
+    <label class="vol" title="Volume"><span aria-hidden="true">vol</span><input type="range" id="vol" min="0" max="1" step="0.05" aria-label="Music volume"></label>
+    <button class="btn" id="wardrobeBtn">✦ Wardrobe</button>
+    <button class="btn gold" id="donateBtn">✉ Donate notes</button>
+    <button class="btn blood" id="tipBtn">🪙 Leave a coin</button>
+    <button class="btn ghost" id="librarianBtn">🕯 Librarian</button>
+  </div>
+</header>
+<div class="demo-banner" id="demoBanner">Demo mode — sample notes only. Add your Supabase URL &amp; anon key in CONFIG to open the real archive.</div>
+
+<nav class="shelf-nav" aria-label="Filter notes">
+  <div class="inner">
+    <div class="lv-row">
+      <span class="lv-label" id="lvLevelLbl">Level</span>
+      <ul class="listview" id="levelList" aria-labelledby="lvLevelLbl"></ul>
+    </div>
+    <div class="lv-row">
+      <span class="lv-label" id="lvSubjLbl">Subject</span>
+      <ul class="listview" id="subjectList" aria-labelledby="lvSubjLbl"></ul>
+    </div>
+    <div class="search-row">
+      <input type="search" id="search" placeholder="Search titles, descriptions, contributors…" aria-label="Search notes">
+      <select id="sort" aria-label="Sort notes">
+        <option value="new">Newest first</option>
+        <option value="old">Oldest first</option>
+        <option value="reads">Most read</option>
+        <option value="az">Title A–Z</option>
+      </select>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="scene-wrap frame" id="sceneWrap">
+    <canvas id="scene" width="320" height="180" aria-label="A gothic library. Walk to a bookshelf to browse a level, the chest to donate, or the desk to sign in."></canvas>
+    <div class="nametag" id="nametag"></div>
+    <div class="prompt" id="prompt" role="button" tabindex="0"></div>
+  </div>
+  <p class="scene-hint">WASD / arrow keys to walk · <b>E</b> to interact · or tap where you want to go</p>
+
+  <div class="sec-head" id="notesTop">
+    <h2 id="shelfTitle">All the shelves</h2>
+    <span class="meta" id="shelfCount"></span>
+  </div>
+  <section class="notes" id="notes" aria-live="polite"></section>
+</main>
+
+<footer>Hush now — the books are sleeping. ✦ <span id="footName"></span></footer>
+
+<!-- datalist for subjects -->
+<datalist id="subjectSuggest"></datalist>
+
+<!-- ============ Wardrobe / welcome ============ -->
+<dialog class="frame" id="dlgWardrobe" aria-labelledby="wdTitle">
+  <div class="dlg-head"><h2 id="wdTitle">The Wardrobe</h2><button class="btn icon ghost" data-close aria-label="Close">✕</button></div>
+  <div class="dlg-body">
+    <p class="lead" id="wdLead">Choose how you appear among the stacks.</p>
+    <div class="wardrobe">
+      <div class="mirror">
+        <canvas id="mirrorCanvas" width="16" height="32"></canvas>
+        <div class="turn">
+          <button class="btn icon" id="turnL" aria-label="Turn left">⟲</button>
+          <button class="btn icon" id="randomize" title="Surprise me">🎲</button>
+          <button class="btn icon" id="turnR" aria-label="Turn right">⟳</button>
+        </div>
+      </div>
+      <div class="opts" id="opts">
+        <label class="f"><span>Your name</span><input type="text" id="charName" maxlength="16" placeholder="e.g. Wren"></label>
+      </div>
+    </div>
+    <div class="dlg-foot"><button class="btn gold" id="wdSave">Enter the library</button></div>
+  </div>
+</dialog>
+
+<!-- ============ Donate ============ -->
+<dialog class="frame" id="dlgDonate" aria-labelledby="dnTitle">
+  <div class="dlg-head"><h2 id="dnTitle">Donate your notes</h2><button class="btn icon ghost" data-close aria-label="Close">✕</button></div>
+  <div class="dlg-body">
+    <p class="lead">Slip your notes into the chest. The librarian reviews each donation before it is shelved.</p>
+    <form class="form" id="donateForm" novalidate></form>
+  </div>
+</dialog>
+
+<!-- ============ Note detail ============ -->
+<dialog class="frame" id="dlgNote" aria-labelledby="ntTitle">
+  <div class="dlg-head"><h2 id="ntTitle">—</h2><button class="btn icon ghost" data-close aria-label="Close">✕</button></div>
+  <div class="dlg-body">
+    <div class="detail-tags" id="ntTags"></div>
+    <div class="detail-desc" id="ntDesc"></div>
+    <div class="detail-meta" id="ntMeta"></div>
+    <div class="dlg-foot" style="margin-top:14px">
+      <button class="btn ghost" id="ntCopy">Copy link</button>
+      <a class="btn gold" id="ntOpen" target="_blank" rel="noopener noreferrer">📖 Open the notes</a>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ Tip jar (money donation) ============ -->
+<dialog class="frame" id="dlgTip" aria-labelledby="tpTitle">
+  <div class="dlg-head"><h2 id="tpTitle">Leave a coin for the candles</h2><button class="btn icon ghost" data-close aria-label="Close">✕</button></div>
+  <div class="dlg-body">
+    <div class="tip" id="tipBody"></div>
+  </div>
+</dialog>
+
+<!-- ============ Librarian ============ -->
+<dialog class="frame" id="dlgLib" aria-labelledby="lbTitle">
+  <div class="dlg-head"><h2 id="lbTitle">The Librarian's Desk</h2><button class="btn icon ghost" data-close aria-label="Close">✕</button></div>
+  <div class="dlg-body" id="libBody"></div>
+</dialog>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+/* =====================================================================
+   CONFIG — edit these
+   ===================================================================== */
+const CONFIG = {
+  SITE_TITLE: "The Midnight Library",
+  SITE_SUBTITLE: "Notes gathered by candlelight — kept by Natt & friends",
+  OWNER_NICKNAME: "Natt",
+
+  // Your existing Supabase project (Project Settings → API). The anon key is safe to expose.
+  SUPABASE_URL: "https://ehaxvbgabpamlzbigqkk.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_nc1gYmhroQVZCoiQEf9t9w_VOdctrlJ",
+
+  // The Supabase account you sign in with as librarian. With this set, the desk only asks for a password.
+  // (It's visible in the page source, so a library-only email is a good idea.)
+  LIBRARIAN_EMAIL: "midnight-library@keeper.com",
+
+  TABLE: "library_notes",
+  ADMIN_TABLE: "library_admins",
+  BUCKET: "library-notes",
+  MAX_FILE_MB: 25,
+
+  // Shelves (one bookshelf per level in the room, up to 6)
+  LEVELS: ["Primary", "Secondary", "Pre-University", "Diploma", "Degree", "Postgraduate"],
+  // Suggestions in the subject box — people can still type any subject
+  SUBJECT_SUGGESTIONS: ["Mathematics","Additional Mathematics","Physics","Chemistry","Biology","English","Bahasa Melayu","History","Geography","Economics","Accounting","Business","Computer Science","Psychology","Law","Literature"],
+
+  // Money tips (optional). Fill in one or both; the 🪙 button hides itself if both are empty.
+  TIP_TNG_URL: "",        // your Touch 'n Go payment link, e.g. https://payment.tngdigital.com.my/...
+  TIP_QR_IMAGE: "",       // or an image of your TNG / DuitNow QR placed next to index.html, e.g. "tng-qr.png"
+  TIP_MESSAGE: "The notes here are free, always. If they helped you, you can buy the librarian a candle (or a teh tarik) through Touch 'n Go.",
+
+  // Optional: URL to your own looping music file (mp3/ogg). Empty = built-in gothic harpsichord + rain.
+  BGM_URL: "",
+};
+
+/* =====================================================================
+   small utilities
+   ===================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+function el(tag, props = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else if (k === 'style') n.setAttribute('style', v);
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (k in n && typeof v !== 'string') n[k] = v;
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return n;
+}
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })); }
+function safeUrl(u) { try { const x = new URL(u); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : null; } catch { return null; } }
+function slugFile(name) { const n = name.normalize('NFKD').replace(/[^\w.\-]+/g, '_').replace(/_+/g, '_'); return n.slice(Math.max(0, n.length - 80)) || 'notes'; }
+function fmtDate(iso) { try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } }
+function fmtSize(b) { if (!b) return ''; if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(0) + ' KB'; return (b / 1048576).toFixed(1) + ' MB'; }
+function toast(msg, kind) {
+  const t = el('div', { class: 'toast' + (kind === 'err' ? ' err' : ''), text: msg });
+  $('#toasts').append(t); setTimeout(() => t.remove(), kind === 'err' ? 6500 : 3800);
+}
+const SPINE_COLORS = ['#6b1e23', '#2e4a3a', '#1f2a44', '#8a6a2a', '#5a3a22', '#4a2340', '#3d4a52', '#7a3b1f', '#2b2f5a', '#55291f'];
+const subjectColor = s => SPINE_COLORS[hashStr(String(s).toLowerCase()) % SPINE_COLORS.length];
+
+/* =====================================================================
+   data layer (Supabase, or demo data when not configured)
+   ===================================================================== */
+const DEMO = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || !window.supabase;
+const sb = DEMO ? null : window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+const daysAgo = d => new Date(Date.now() - d * 864e5).toISOString();
+let demoNotes = [
+  { id: 'd1', title: 'Calculus I — Limits, Derivatives & the Chain Rule', subject: 'Mathematics', level: 'Degree', nickname: 'Natt', description: 'Handwritten lecture notes with worked examples. Includes a one-page cheat sheet of derivative rules at the end.', status: 'approved', created_at: daysAgo(2), downloads: 41, file_name: 'calculus-1.pdf', file_size: 3_400_000 },
+  { id: 'd2', title: 'Organic Chemistry Reaction Map', subject: 'Chemistry', level: 'Pre-University', nickname: 'ravenquill', description: 'Every reaction pathway on one giant map: alkanes → alcohols → carbonyls → acids. Colour coded.', status: 'approved', created_at: daysAgo(5), downloads: 88, file_name: 'orgo-map.png', file_size: 1_200_000 },
+  { id: 'd3', title: 'The French Revolution: Causes and Consequences', subject: 'History', level: 'Secondary', nickname: 'Lysander', description: 'Essay plan + timeline 1789–1799, with key figures and quotes worth memorising.', status: 'approved', created_at: daysAgo(9), downloads: 23, file_name: 'french-revolution.pdf', file_size: 900_000 },
+  { id: 'd4', title: 'Cell Biology Summary', subject: 'Biology', level: 'Secondary', nickname: 'mossling', description: 'Organelles, membrane transport and mitosis vs meiosis, with diagrams.', status: 'approved', created_at: daysAgo(12), downloads: 57, file_name: 'cell-bio.pdf', file_size: 2_100_000 },
+  { id: 'd5', title: 'Gothic Literature Reading Notes', subject: 'Literature', level: 'Degree', nickname: 'Natt', description: 'Frankenstein, Dracula, and The Picture of Dorian Gray — themes, motifs and seminar questions.', status: 'approved', created_at: daysAgo(15), downloads: 64, link_url: 'https://example.com' },
+  { id: 'd6', title: 'Times Tables Practice Sheets', subject: 'Mathematics', level: 'Primary', nickname: 'auntie_ink', description: 'Printable practice sheets from 2× to 12×, with answer keys.', status: 'approved', created_at: daysAgo(20), downloads: 12, file_name: 'times-tables.pdf', file_size: 500_000 },
+  { id: 'd7', title: 'Financial Accounting — Double Entry Basics', subject: 'Accounting', level: 'Diploma', nickname: 'ledgerling', description: 'T-accounts, trial balance and common mistakes. Plenty of practice questions.', status: 'approved', created_at: daysAgo(26), downloads: 33, file_name: 'double-entry.pdf', file_size: 1_600_000 },
+  { id: 'd8', title: 'Research Methods: Qualitative Coding', subject: 'Psychology', level: 'Postgraduate', nickname: 'nocturne', description: 'How I coded 20 interviews for my thesis — thematic analysis step by step.', status: 'approved', created_at: daysAgo(31), downloads: 19, file_name: 'qual-coding.pdf', file_size: 750_000 },
+  { id: 'd9', title: 'Newtonian Mechanics Formula Sheet', subject: 'Physics', level: 'Pre-University', nickname: 'Natt', description: 'Kinematics, forces, energy and momentum on two pages.', status: 'approved', created_at: daysAgo(40), downloads: 102, file_name: 'mechanics.pdf', file_size: 400_000 },
+  { id: 'd10', title: 'Essay Writing: Argumentative Structure', subject: 'English', level: 'Secondary', nickname: 'quillfeather', description: 'PEEL paragraphs, hooks, and model introductions.', status: 'pending', created_at: daysAgo(1), downloads: 0, file_name: 'essays.pdf', file_size: 300_000 },
+];
+let demoAuth = null;
+
+const state = {
+  notes: [], level: 'All', subject: 'All', query: '', sort: 'new',
+  user: null, isAdmin: false, loaded: false,
+};
+
+async function loadNotes() {
+  if (DEMO) { state.notes = demoNotes.filter(n => n.status === 'approved'); state.loaded = true; return; }
+  const { data, error } = await sb.from(CONFIG.TABLE).select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(2000);
+  state.loaded = true;
+  if (error) { toast('Could not reach the archive: ' + error.message, 'err'); state.notes = []; return; }
+  state.notes = data || [];
+}
+async function loadByStatus(status) {
+  if (DEMO) return demoNotes.filter(n => n.status === status);
+  const { data, error } = await sb.from(CONFIG.TABLE).select('*').eq('status', status).order('created_at', { ascending: false }).limit(2000);
+  if (error) { toast(error.message, 'err'); return []; }
+  return data || [];
+}
+function noteUrl(n) {
+  if (n.file_path) return DEMO ? null : sb.storage.from(CONFIG.BUCKET).getPublicUrl(n.file_path).data.publicUrl;
+  return n.link_url ? safeUrl(n.link_url) : null;
+}
+async function countRead(n) {
+  n.downloads = (n.downloads || 0) + 1;
+  if (!DEMO) sb.rpc('library_count_download', { note_id: n.id }).then(() => {}, () => {});
+}
+
+const ALLOWED_EXT = ['pdf','png','jpg','jpeg','webp','gif','doc','docx','ppt','pptx','xls','xlsx','txt','md','zip'];
+function validateNote(v) {
+  if (!v.nickname) return 'Please sign with a nickname.';
+  if (v.nickname.length > 40) return 'Nickname is too long (40 characters max).';
+  if (!v.title) return 'Your notes need a title.';
+  if (!v.subject) return 'Which subject are these notes for?';
+  if (!v.level) return 'Choose a level of education.';
+  if (!v.file && !v.link) return 'Attach a file or paste a link to your notes.';
+  if (v.link && !safeUrl(v.link)) return 'The link must start with http:// or https://';
+  if (v.file) {
+    if (v.file.size > CONFIG.MAX_FILE_MB * 1048576) return `File is too large (max ${CONFIG.MAX_FILE_MB} MB).`;
+    const ext = (v.file.name.split('.').pop() || '').toLowerCase();
+    if (!ALLOWED_EXT.includes(ext)) return 'That file type is not accepted. Try PDF, an image, Word, PowerPoint or text.';
+  }
+  return null;
+}
+async function submitNote(v, asLibrarian) {
+  const row = {
+    title: v.title.slice(0, 160), subject: v.subject.slice(0, 80), level: v.level.slice(0, 60),
+    nickname: v.nickname.slice(0, 40), description: (v.description || '').slice(0, 2000) || null,
+    link_url: v.link ? safeUrl(v.link) : null, status: asLibrarian ? 'approved' : 'pending',
+  };
+  if (DEMO) {
+    await new Promise(r => setTimeout(r, 500));
+    Object.assign(row, { id: 'd' + uuid(), created_at: new Date().toISOString(), downloads: 0, file_name: v.file?.name || null, file_size: v.file?.size || null });
+    demoNotes.unshift(row);
+    return null;
+  }
+  let path = null;
+  if (v.file) {
+    path = `${asLibrarian ? 'official' : 'donations'}/${uuid()}/${slugFile(v.file.name)}`;
+    const up = await sb.storage.from(CONFIG.BUCKET).upload(path, v.file, { contentType: v.file.type || 'application/octet-stream', upsert: false });
+    if (up.error) return 'Upload failed: ' + up.error.message;
+    Object.assign(row, { file_path: path, file_name: v.file.name.slice(0, 200), file_size: v.file.size });
+  }
+  if (asLibrarian && state.user) row.uploaded_by = state.user.id;
+  const { error } = await sb.from(CONFIG.TABLE).insert(row);
+  if (error) {
+    if (asLibrarian && path) await sb.storage.from(CONFIG.BUCKET).remove([path]);
+    return 'Could not save: ' + error.message;
+  }
+  return null;
+}
+async function setStatus(n, status) {
+  if (DEMO) { n.status = status; return null; }
+  const { error } = await sb.from(CONFIG.TABLE).update({ status }).eq('id', n.id);
+  return error ? error.message : null;
+}
+async function deleteNote(n) {
+  if (DEMO) { demoNotes = demoNotes.filter(x => x.id !== n.id); return null; }
+  if (n.file_path) await sb.storage.from(CONFIG.BUCKET).remove([n.file_path]);
+  const { error } = await sb.from(CONFIG.TABLE).delete().eq('id', n.id);
+  return error ? error.message : null;
+}
+
+/* ---------- auth ---------- */
+async function refreshAuth() {
+  if (DEMO) { state.user = demoAuth; state.isAdmin = !!demoAuth; }
+  else {
+    const { data } = await sb.auth.getSession();
+    state.user = data.session?.user || null;
+    state.isAdmin = false;
+    if (state.user) {
+      const { data: rows } = await sb.from(CONFIG.ADMIN_TABLE).select('user_id').eq('user_id', state.user.id).limit(1);
+      state.isAdmin = !!(rows && rows.length);
+    }
+  }
+  $('#librarianBtn').textContent = state.isAdmin ? '🕯 Librarian ✦' : '🕯 Librarian';
+}
+
+/* =====================================================================
+   filters + notes rendering
+   ===================================================================== */
+function levelsAll() {
+  const extra = [...new Set(state.notes.map(n => n.level))].filter(l => !CONFIG.LEVELS.includes(l)).sort();
+  return [...CONFIG.LEVELS, ...extra];
+}
+function setLevel(l) { state.level = l; state.subject = 'All'; renderAll(); }
+function setSubject(s) { state.subject = s; renderAll(); }
+
+function chip(label, count, pressed, onclick) {
+  return el('li', {}, el('button', { class: 'chip', 'aria-pressed': String(pressed), onclick },
+    el('span', { text: label }), el('span', { class: 'n', text: count })));
+}
+function renderFilters() {
+  const lv = $('#levelList'); lv.replaceChildren();
+  lv.append(chip('All levels', state.notes.length, state.level === 'All', () => setLevel('All')));
+  for (const l of levelsAll()) lv.append(chip(l, state.notes.filter(n => n.level === l).length, state.level === l, () => setLevel(l)));
+
+  const pool = state.level === 'All' ? state.notes : state.notes.filter(n => n.level === state.level);
+  const counts = new Map();
+  for (const n of pool) counts.set(n.subject, (counts.get(n.subject) || 0) + 1);
+  const subjects = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  if (state.subject !== 'All' && !counts.has(state.subject)) state.subject = 'All';
+  const sl = $('#subjectList'); sl.replaceChildren();
+  sl.append(chip('All subjects', pool.length, state.subject === 'All', () => setSubject('All')));
+  for (const [s, c] of subjects) sl.append(chip(s, c, state.subject === s, () => setSubject(s)));
+
+  const dl = $('#subjectSuggest'); dl.replaceChildren();
+  for (const s of new Set([...CONFIG.SUBJECT_SUGGESTIONS, ...state.notes.map(n => n.subject)])) dl.append(el('option', { value: s }));
+}
+function filtered() {
+  const q = state.query.trim().toLowerCase();
+  let list = state.notes.filter(n =>
+    (state.level === 'All' || n.level === state.level) &&
+    (state.subject === 'All' || n.subject === state.subject) &&
+    (!q || [n.title, n.description, n.nickname, n.subject].some(x => (x || '').toLowerCase().includes(q))));
+  const by = {
+    new: (a, b) => b.created_at.localeCompare(a.created_at),
+    old: (a, b) => a.created_at.localeCompare(b.created_at),
+    reads: (a, b) => (b.downloads || 0) - (a.downloads || 0),
+    az: (a, b) => a.title.localeCompare(b.title),
+  }[state.sort];
+  return list.sort(by);
+}
+function renderNotes() {
+  const box = $('#notes'); box.replaceChildren();
+  const list = filtered();
+  const where = [state.level !== 'All' ? state.level : null, state.subject !== 'All' ? state.subject : null].filter(Boolean).join(' · ');
+  $('#shelfTitle').textContent = where ? where : 'All the shelves';
+  $('#shelfCount').textContent = state.loaded ? `${list.length} ${list.length === 1 ? 'volume' : 'volumes'}` : 'lighting the candles…';
+  if (!state.loaded) return;
+  if (!list.length) {
+    box.append(el('div', { class: 'empty' },
+      el('div', { text: state.notes.length ? 'No volumes match. The shelf is bare and dusty…' : 'The shelves are empty, waiting for their first book.' }),
+      el('button', { class: 'btn gold', onclick: openDonate, text: '✉ Donate the first notes' })));
+    return;
+  }
+  for (const n of list) {
+    const card = el('button', { class: 'tome', onclick: () => openNote(n), 'aria-label': `${n.title}, ${n.subject}, ${n.level}` },
+      el('div', { class: 'spine', style: `background-color:${subjectColor(n.subject)}` }),
+      el('div', { class: 'body' },
+        el('div', { class: 'tags', text: `${n.subject} · ${n.level}` }),
+        el('h3', { text: n.title }),
+        n.description ? el('p', { text: n.description }) : null,
+        el('div', { class: 'foot' },
+          el('span', {}, 'by ', el('b', { text: n.nickname })),
+          el('span', { text: `${fmtDate(n.created_at)} · ${n.downloads || 0} reads` }))));
+    box.append(card);
+  }
+}
+function renderAll() { renderFilters(); renderNotes(); Scene.refreshCounts(); }
+
+$('#search').addEventListener('input', e => { state.query = e.target.value; renderNotes(); });
+$('#sort').addEventListener('change', e => { state.sort = e.target.value; renderNotes(); });
+
+/* =====================================================================
+   dialogs
+   ===================================================================== */
+document.querySelectorAll('dialog').forEach(d => {
+  d.addEventListener('click', e => { if (e.target === d) d.close(); });
+  d.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => d.close()));
+});
+const anyDialogOpen = () => !!document.querySelector('dialog[open]');
+
+/* ---------- note detail ---------- */
+let currentNote = null;
+function openNote(n) {
+  currentNote = n;
+  $('#ntTitle').textContent = n.title;
+  $('#ntTags').textContent = `${n.subject} · ${n.level}`;
+  $('#ntDesc').textContent = n.description || 'No description was left with these notes.';
+  const meta = $('#ntMeta'); meta.replaceChildren(
+    el('div', { text: `${n.nickname === CONFIG.OWNER_NICKNAME ? 'Shelved' : 'Donated'} by ${n.nickname} · ${fmtDate(n.created_at)}` }),
+    el('div', { text: `${n.downloads || 0} reads` }),
+    n.file_name ? el('div', { text: `File: ${n.file_name}${n.file_size ? ' · ' + fmtSize(n.file_size) : ''}` }) : el('div', { text: 'External link' }));
+  const a = $('#ntOpen'); const url = noteUrl(n);
+  if (url) a.href = url; else a.removeAttribute('href');
+  $('#dlgNote').showModal();
+  try { history.replaceState(null, '', '#note-' + n.id); } catch {}
+}
+$('#ntOpen').addEventListener('click', e => {
+  if (!currentNote) return;
+  if (!$('#ntOpen').getAttribute('href')) { e.preventDefault(); toast(DEMO ? 'Demo mode: connect Supabase to open real notes.' : 'This note has no file attached.'); return; }
+  countRead(currentNote); renderNotes();
+});
+$('#ntCopy').addEventListener('click', async () => {
+  const link = location.href.split('#')[0] + '#note-' + currentNote.id;
+  try { await navigator.clipboard.writeText(link); toast('Link copied ✦'); } catch { toast('Copy failed — the link is: ' + link); }
+});
+$('#dlgNote').addEventListener('close', () => { try { history.replaceState(null, '', location.pathname + location.search); } catch {} });
+
+/* ---------- note form (shared by donors and the librarian) ---------- */
+function buildNoteForm(form, { librarian }) {
+  form.replaceChildren();
+  const nick = el('input', { type: 'text', name: 'nickname', maxlength: 40, required: true, placeholder: 'How should we credit you?' });
+  nick.value = librarian ? CONFIG.OWNER_NICKNAME : (store.get('nl_nick', '') || Character.look.name || '');
+  const level = el('select', { name: 'level', required: true },
+    el('option', { value: '', text: 'Choose a level…' }), ...levelsAll().map(l => el('option', { value: l, text: l })));
+  if (state.level !== 'All') level.value = state.level;
+  const subject = el('input', { type: 'text', name: 'subject', list: 'subjectSuggest', maxlength: 80, required: true, placeholder: 'e.g. Chemistry' });
+  if (state.subject !== 'All') subject.value = state.subject;
+  const submit = el('button', { class: 'btn gold', type: 'submit', text: librarian ? '📚 Shelve it' : '✉ Seal & donate' });
+  form.append(
+    el('label', { class: 'f' }, el('span', {}, 'Nickname ', el('em', { text: '*' })), nick),
+    el('label', { class: 'f' }, el('span', {}, 'Title ', el('em', { text: '*' })), el('input', { type: 'text', name: 'title', maxlength: 160, required: true, placeholder: 'e.g. Photosynthesis summary' })),
+    el('div', { class: 'grid2' },
+      el('label', { class: 'f' }, el('span', {}, 'Subject ', el('em', { text: '*' })), subject),
+      el('label', { class: 'f' }, el('span', {}, 'Level ', el('em', { text: '*' })), level)),
+    el('label', { class: 'f' }, el('span', { text: 'Description' }), el('textarea', { name: 'description', maxlength: 2000, placeholder: 'What do these notes cover? Any tips for readers?' })),
+    el('div', { class: 'filebox' },
+      el('label', { class: 'f' }, el('span', { text: `File (max ${CONFIG.MAX_FILE_MB} MB — PDF, image, Word, slides, text)` }),
+        el('input', { type: 'file', name: 'file', accept: ALLOWED_EXT.map(e => '.' + e).join(',') })),
+      el('div', { class: 'or', text: '— or —' }),
+      el('label', { class: 'f' }, el('span', { text: 'Link (Google Drive, Notion, etc.)' }), el('input', { type: 'url', name: 'link', placeholder: 'https://…' }))),
+    librarian ? null : el('div', { class: 'hp', 'aria-hidden': 'true' }, el('input', { type: 'text', name: 'website', tabindex: '-1', autocomplete: 'off' })),
+    el('div', { class: 'dlg-foot' }, submit));
+
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const v = {
+      nickname: (fd.get('nickname') || '').trim(), title: (fd.get('title') || '').trim(), subject: (fd.get('subject') || '').trim(),
+      level: fd.get('level') || '', description: (fd.get('description') || '').trim(), link: (fd.get('link') || '').trim(),
+      file: fd.get('file') && fd.get('file').size ? fd.get('file') : null,
+    };
+    if (!librarian && fd.get('website')) { form.closest('dialog').close(); toast('Thank you!'); return; } // bot trap
+    const bad = validateNote(v); if (bad) { toast(bad, 'err'); return; }
+    submit.disabled = true; const old = submit.textContent; submit.textContent = librarian ? 'Shelving…' : 'Sealing with wax…';
+    const err = await submitNote(v, librarian);
+    submit.disabled = false; submit.textContent = old;
+    if (err) { toast(err, 'err'); return; }
+    if (!librarian) {
+      store.set('nl_nick', v.nickname);
+      form.closest('dialog').close();
+      toast(`Thank you, ${v.nickname}! Your notes await the librarian's review. ✦`);
+      Scene.say(`The chest clicks shut. Thank you, ${v.nickname}.`);
+    } else {
+      toast('Shelved ✦');
+      await loadNotes(); renderAll(); buildNoteForm(form, { librarian: true });
+    }
+  };
+}
+function openDonate() { buildNoteForm($('#donateForm'), { librarian: false }); $('#dlgDonate').showModal(); }
+$('#donateBtn').addEventListener('click', openDonate);
+
+/* ---------- tip jar (money) ---------- */
+const TIP_URL = safeUrl(CONFIG.TIP_TNG_URL || '');
+const TIP_ON = !!(TIP_URL || CONFIG.TIP_QR_IMAGE);
+function openTip() {
+  const box = $('#tipBody'); box.replaceChildren(el('p', { class: 'lead', style: 'margin:0', text: CONFIG.TIP_MESSAGE }));
+  if (CONFIG.TIP_QR_IMAGE) box.append(el('div', { class: 'qr' }, el('img', { src: CONFIG.TIP_QR_IMAGE, alt: "Touch 'n Go QR code" })),
+    el('div', { class: 'small', text: "Scan with your Touch 'n Go eWallet (or any DuitNow QR app)" }));
+  if (TIP_URL) box.append(el('a', { class: 'btn tng', href: TIP_URL, target: '_blank', rel: 'noopener noreferrer', text: "💙 Pay with Touch 'n Go" }));
+  if (!TIP_ON) box.append(el('p', { class: 'small', text: 'Demo mode: add TIP_TNG_URL and/or TIP_QR_IMAGE in CONFIG and your Touch \'n Go button and QR appear here.' }));
+  box.append(el('p', { class: 'fine', style: 'margin:0', text: 'Entirely optional. Thank you for keeping the candles lit. 🕯' }));
+  $('#dlgTip').showModal();
+}
+$('#tipBtn').addEventListener('click', openTip);
+
+/* ---------- librarian ---------- */
+let libTab = 'shelve';
+async function openLibrarian() { await refreshAuth(); renderLibrarian(); if (!$('#dlgLib').open) $('#dlgLib').showModal(); }
+$('#librarianBtn').addEventListener('click', openLibrarian);
+
+function renderLibrarian() {
+  const body = $('#libBody'); body.replaceChildren();
+  if (!state.user) {
+    const fixed = (CONFIG.LIBRARIAN_EMAIL || '').trim();
+    const hide = !!fixed || DEMO;
+    const email = el('input', { type: hide ? 'hidden' : 'email', name: 'email', required: !hide, autocomplete: 'username', placeholder: 'you@example.com' });
+    if (fixed) email.value = fixed;
+    const pass = el('input', { type: 'password', name: 'password', required: true, autocomplete: 'current-password', placeholder: 'The secret words…' });
+    const btn = el('button', { class: 'btn gold', type: 'submit', text: '🗝 Unlock the desk' });
+    const form = el('form', { class: 'form' },
+      el('p', { class: 'lead', text: DEMO ? 'Demo mode: any password will open the desk.' : 'Only the keeper of this library may pass. Speak the password.' }),
+      hide ? email : el('label', { class: 'f' }, el('span', { text: 'Email' }), email),
+      el('label', { class: 'f' }, el('span', { text: 'Password' }), pass),
+      el('div', { class: 'dlg-foot' }, btn));
+    setTimeout(() => (hide ? pass : email).focus(), 50);
+    form.onsubmit = async e => {
+      e.preventDefault();
+      if (!pass.value) { toast('Speak the password first.', 'err'); return; }
+      btn.disabled = true;
+      if (DEMO) demoAuth = { id: 'demo', email: email.value || fixed || 'librarian@demo' };
+      else {
+        const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
+        if (error) { btn.disabled = false; pass.value = ''; toast(error.message === 'Invalid login credentials' ? 'Wrong password. The owl is unimpressed.' : error.message, 'err'); return; }
+      }
+      await refreshAuth(); renderLibrarian();
+    };
+    body.append(form); return;
+  }
+  const signOut = el('button', { class: 'btn ghost', text: 'Sign out', onclick: async () => {
+    if (DEMO) demoAuth = null; else await sb.auth.signOut();
+    await refreshAuth(); renderLibrarian();
+  } });
+  if (!state.isAdmin) {
+    body.append(el('p', { class: 'lead', text: `Signed in as ${state.user.email}, but your name is not on the librarian roster.` }),
+      el('p', { class: 'small', text: 'Add your user id to the library_admins table in Supabase (see README).' }),
+      el('div', { class: 'dlg-foot' }, signOut));
+    return;
+  }
+  const tabs = el('div', { class: 'tabs', role: 'tablist' });
+  const content = el('div');
+  const mk = (id, label) => el('button', { class: 'btn', role: 'tab', 'aria-selected': String(libTab === id), text: label, onclick: () => { libTab = id; renderLibrarian(); } });
+  tabs.append(mk('shelve', '📚 Shelve a note'), mk('pending', '✉ Donations'), mk('catalogue', '🗂 Catalogue'), el('span', { style: 'flex:1' }), signOut);
+  body.append(el('p', { class: 'small', style: 'margin:0 0 10px', text: `Welcome back, ${state.user.email}.` }), tabs, content);
+
+  if (libTab === 'shelve') { const f = el('form', { class: 'form', novalidate: true }); content.append(f); buildNoteForm(f, { librarian: true }); }
+  else renderLedger(content, libTab === 'pending' ? 'pending' : 'approved');
+}
+async function renderLedger(box, status) {
+  box.replaceChildren(el('p', { class: 'small', text: 'Turning pages…' }));
+  const rows = await loadByStatus(status);
+  box.replaceChildren();
+  if (!rows.length) { box.append(el('p', { class: 'lead', text: status === 'pending' ? 'No donations waiting. The chest is empty.' : 'The catalogue is empty.' })); return; }
+  const list = el('div', { class: 'ledger' });
+  for (const n of rows) {
+    const url = noteUrl(n);
+    const act = async (fn, msg) => { const err = await fn(); if (err) toast(err, 'err'); else { toast(msg); await loadNotes(); renderAll(); renderLedger(box, status); } };
+    list.append(el('div', { class: 'entry' },
+      el('div', { class: 't', text: n.title }),
+      el('div', { class: 'm', text: `${n.subject} · ${n.level} · by ${n.nickname} · ${fmtDate(n.created_at)}${n.file_name ? ' · ' + n.file_name + ' ' + fmtSize(n.file_size) : n.link_url ? ' · link' : ''}${status === 'approved' ? ' · ' + (n.downloads || 0) + ' reads' : ''}` }),
+      n.description ? el('div', { class: 'd', text: n.description }) : null,
+      el('div', { class: 'a' },
+        url ? el('a', { class: 'btn ghost', href: url, target: '_blank', rel: 'noopener noreferrer', text: '👁 Inspect' }) : null,
+        status === 'pending' ? el('button', { class: 'btn moss', text: '✓ Approve & shelve', onclick: () => act(() => setStatus(n, 'approved'), 'Shelved ✦') }) : null,
+        status === 'approved' ? el('button', { class: 'btn ghost', text: '↩ Unshelve', onclick: () => act(() => setStatus(n, 'pending'), 'Moved back to donations') }) : null,
+        el('button', { class: 'btn blood', text: status === 'pending' ? '✕ Reject & delete' : '✕ Delete', onclick: (e) => {
+          const b = e.currentTarget;
+          if (b.dataset.armed) act(() => deleteNote(n), 'Removed');
+          else { b.dataset.armed = '1'; b.textContent = 'Click again to confirm'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = status === 'pending' ? '✕ Reject & delete' : '✕ Delete'; } }, 3500); }
+        } }))));
+  }
+  box.append(list);
+}
+
+/* =====================================================================
+   CHARACTER — pixel sprite builder (16 × 32)
+   ===================================================================== */
+const Character = (() => {
+  const SKIN = ['#f6d7c3', '#eec1a0', '#d9a07a', '#b97a52', '#8d5a3b', '#5e3a26'];
+  const HAIR_C = ['#1b1416', '#3b2416', '#6b3f22', '#a8672f', '#d9b56b', '#7a1f2b', '#d8d4cc', '#3f4a6b', '#4d2a5e'];
+  const OUTFIT_C = ['#4a1d24', '#24382d', '#1f2740', '#3a2a1e', '#3b2340', '#2b2b2e', '#6b5a3a', '#5b2a1a'];
+  const ACCENT_C = ['#c9a24a', '#8b1e2b', '#e8dcc8', '#3d6b50', '#6a4a8a', '#1b1416'];
+  const HAIR = ['Short', 'Long', 'Bob', 'Bun', 'Curly', 'Swept'];
+  const OUTFIT = ['Sweater vest', 'Scholar robe', 'Cloak', 'Blazer & tie', 'Velvet dress'];
+  const ACC = ['None', 'Round glasses', 'Scarf', 'Witch hat', 'Top hat', 'Ribbon bow'];
+  const OPTIONS = { HAIR, OUTFIT, ACC, SKIN, HAIR_C, OUTFIT_C, ACCENT_C };
+
+  const defaults = { name: '', hair: 1, hairC: 1, skin: 1, outfit: 0, outfitC: 0, accent: 0, acc: 1 };
+  let look = Object.assign({}, defaults, store.get('nl_character', {}));
+
+  function shade(hex, f) {
+    const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = n >> 8 & 255, b = n & 255;
+    const k = v => Math.max(0, Math.min(255, Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f)));
+    return '#' + ((1 << 24) | (k(r) << 16) | (k(g) << 8) | k(b)).toString(16).slice(1);
+  }
+
+  // dir: 0 down, 1 left, 2 right, 3 up · frame 0..3
+  function draw(ctx, L, dir, frame) {
+    const P = (c, x, y, w = 1, h = 1) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+    const mirror = dir === 2; if (mirror) { ctx.save(); ctx.translate(16, 0); ctx.scale(-1, 1); }
+    const d = mirror ? 1 : dir;
+    const skin = SKIN[L.skin], skinD = shade(skin, -.18);
+    const hair = HAIR_C[L.hairC], hairD = shade(hair, -.3), hairL = shade(hair, .18);
+    const oc = OUTFIT_C[L.outfitC], ocD = shade(oc, -.32), ocL = shade(oc, .15);
+    const ac = ACCENT_C[L.accent];
+    const outfit = OUTFIT[L.outfit], style = HAIR[L.hair], acc = ACC[L.acc];
+    const bob = (frame === 1 || frame === 3) ? 1 : 0;
+    const Y = 4 + bob; // head top
+    const shoe = '#1a1012', pants = '#221a24', shirt = '#e8dcc8';
+    const robeLike = outfit === 'Scholar robe' || outfit === 'Velvet dress';
+
+    // long hair behind body
+    if (d !== 3 && (style === 'Long')) { P(hair, 3, Y + 4, 2, 12); P(hair, 11, Y + 4, 2, 12); P(hairD, 3, Y + 14, 2, 2); P(hairD, 11, Y + 14, 2, 2); }
+    if (outfit === 'Cloak') { P(ocD, 2, Y + 13, 12, 11); P(shade(oc, -.5), 2, Y + 23, 12, 1); }
+
+    // legs
+    const lL = frame === 1 ? -1 : 0, rL = frame === 3 ? -1 : 0;
+    if (!robeLike) {
+      if (d === 1) { P(pants, 6, Y + 21, 3, 4 + (frame % 2 ? -1 : 0)); P(shoe, 5, Y + 25 + (frame % 2 ? -1 : 0), 4, 2); if (frame % 2) { P(pants, 8, Y + 21, 2, 4); P(shoe, 8, Y + 25, 3, 2); } }
+      else { P(pants, 5, Y + 21, 2, 4 + lL); P(pants, 9, Y + 21, 2, 4 + rL); P(shoe, 5, Y + 25 + lL, 2, 2); P(shoe, 9, Y + 25 + rL, 2, 2); P(shade(shoe, .2), 5, Y + 25 + lL, 2, 1); }
+    } else {
+      P(shoe, 5, Y + 26 + lL, 2, 1); P(shoe, 9, Y + 26 + rL, 2, 1);
+    }
+
+    // torso
+    P(oc, 4, Y + 13, 8, 8); P(ocD, 4, Y + 19, 8, 2);
+    if (outfit === 'Sweater vest') {
+      P(shirt, 4, Y + 13, 8, 1); if (d !== 3) { P(shirt, 7, Y + 14, 2, 2); P(shirt, 7, Y + 16, 1, 1); }
+      for (let i = 0; i < 8; i += 2) P(ocL, 4 + i, Y + 18, 1, 1);
+    } else if (outfit === 'Scholar robe') {
+      P(oc, 3, Y + 21, 10, 5); P(ocD, 3, Y + 25, 10, 1); P(ocD, 4, Y + 21, 8, 1);
+      if (d !== 3) { P(ac, 7, Y + 13, 2, 13); P(shirt, 7, Y + 13, 2, 1); }
+    } else if (outfit === 'Cloak') {
+      if (d !== 3) { P(ac, 7, Y + 13, 2, 1); P(shirt, 6, Y + 14, 4, 6); P(ocL, 6, Y + 14, 1, 6); }
+    } else if (outfit === 'Blazer & tie') {
+      if (d !== 3) { P(shirt, 6, Y + 13, 4, 7); P(ac, 7, Y + 14, 2, 1); P(ac, 7, Y + 15, 1, 4); P(ocD, 6, Y + 13, 1, 7); P(ocD, 9, Y + 13, 1, 7); }
+    } else if (outfit === 'Velvet dress') {
+      P(oc, 3, Y + 19, 10, 5); P(oc, 2, Y + 22, 12, 3); P(ocD, 2, Y + 24, 12, 1);
+      if (d !== 3) { P(shirt, 5, Y + 13, 6, 1); P(ac, 7, Y + 14, 2, 1); }
+      for (let i = 0; i < 12; i += 2) P(shirt, 2 + i, Y + 25, 1, 1);
+    }
+
+    // arms
+    const sleeve = outfit === 'Sweater vest' ? shirt : oc, sleeveD = outfit === 'Sweater vest' ? '#c9bca6' : ocD;
+    const swing = frame === 1 ? 1 : frame === 3 ? -1 : 0;
+    if (d === 1) { P(sleeve, 7, Y + 14 + swing, 2, 5); P(skin, 7, Y + 19 + swing, 2, 1); }
+    else { P(sleeve, 3, Y + 14 + swing, 1, 5); P(sleeveD, 3, Y + 18 + swing, 1, 1); P(skin, 3, Y + 19 + swing, 1, 1);
+           P(sleeve, 12, Y + 14 - swing, 1, 5); P(sleeveD, 12, Y + 18 - swing, 1, 1); P(skin, 12, Y + 19 - swing, 1, 1); }
+
+    // neck + head
+    P(skinD, 7, Y + 12, 2, 1);
+    P(skin, 4, Y + 4, 8, 8); P(skinD, 4, Y + 11, 8, 1);
+    if (d === 0) { P('#1a1012', 6, Y + 8, 1, 2); P('#1a1012', 9, Y + 8, 1, 2); P('#e79a8a', 5, Y + 10, 1, 1); P('#e79a8a', 10, Y + 10, 1, 1); P(skinD, 7, Y + 10, 2, 1); }
+    if (d === 1) { P('#1a1012', 5, Y + 8, 1, 2); P('#e79a8a', 5, Y + 10, 1, 1); P(skinD, 3, Y + 8, 1, 2); }
+
+    // hair
+    const top = () => { P(hair, 4, Y + 2, 8, 3); P(hairL, 5, Y + 2, 4, 1); };
+    if (d === 3) {
+      P(hair, 3, Y + 2, 10, style === 'Short' || style === 'Swept' ? 8 : style === 'Bun' ? 8 : 10);
+      P(hairD, 4, Y + 9, 8, 1);
+      if (style === 'Long') P(hair, 3, Y + 4, 10, 14);
+      if (style === 'Bun') { P(hair, 6, Y - 1, 4, 3); P(hairD, 6, Y + 1, 4, 1); }
+      if (style === 'Curly') { for (let i = 0; i < 10; i += 2) P(hairD, 3 + i, Y + 11, 1, 1); }
+    } else {
+      top();
+      if (style === 'Short') { P(hair, 4, Y + 4, 8, 1); P(hair, 4, Y + 5, 2, 1); P(hair, 9, Y + 5, 3, 1); P(hair, 3, Y + 4, 1, 4); P(hair, 12, Y + 4, 1, 4); }
+      if (style === 'Long') { P(hair, 4, Y + 4, 8, 2); P(hair, 3, Y + 3, 1, 9); P(hair, 12, Y + 3, 1, 9); P(hairD, 7, Y + 4, 1, 2); }
+      if (style === 'Bob') { P(hair, 4, Y + 4, 8, 2); P(hair, 3, Y + 3, 2, 8); P(hair, 11, Y + 3, 2, 8); P(hairD, 3, Y + 10, 2, 1); P(hairD, 11, Y + 10, 2, 1); }
+      if (style === 'Bun') { P(hair, 6, Y - 1, 4, 3); P(hairL, 7, Y - 1, 1, 1); P(hair, 4, Y + 4, 8, 1); P(hair, 3, Y + 4, 1, 3); P(hair, 12, Y + 4, 1, 3); }
+      if (style === 'Curly') { P(hair, 3, Y + 1, 10, 4); for (let i = 0; i < 10; i += 2) P(hairL, 3 + i, Y + 1, 1, 1); P(hair, 2, Y + 3, 2, 7); P(hair, 12, Y + 3, 2, 7); P(hairD, 2, Y + 9, 1, 1); P(hairD, 13, Y + 9, 1, 1); P(hair, 4, Y + 5, 2, 1); P(hair, 10, Y + 5, 2, 1); }
+      if (style === 'Swept') { P(hair, 4, Y + 4, 6, 2); P(hair, 4, Y + 6, 3, 1); P(hair, 3, Y + 3, 1, 5); P(hair, 12, Y + 3, 1, 4); P(hairL, 9, Y + 1, 3, 1); }
+      if (d === 1) { P(hair, 9, Y + 3, 4, style === 'Short' || style === 'Swept' ? 5 : 8); }
+    }
+
+    // accessories
+    if (acc === 'Round glasses' && d !== 3) {
+      const g = '#c9a24a';
+      if (d === 0) { P(g, 5, Y + 7, 3, 1); P(g, 5, Y + 10, 3, 1); P(g, 5, Y + 8, 1, 2); P(g, 7, Y + 8, 1, 2); P(g, 8, Y + 7, 3, 1); P(g, 8, Y + 10, 3, 1); P(g, 8, Y + 8, 1, 2); P(g, 10, Y + 8, 1, 2); }
+      else { P(g, 4, Y + 7, 3, 1); P(g, 4, Y + 10, 3, 1); P(g, 4, Y + 8, 1, 2); P(g, 6, Y + 8, 1, 2); P(g, 7, Y + 8, 4, 1); }
+    }
+    if (acc === 'Scarf') { P(ac, 4, Y + 12, 8, 2); P(shade(ac, -.3), 4, Y + 13, 8, 1); if (d !== 3) { P(ac, 9, Y + 14, 2, 5); P(shade(ac, -.3), 9, Y + 18, 2, 1); } }
+    if (acc === 'Witch hat') {
+      const h = '#1a1420', hl = '#2d2436';
+      P(h, 1, Y + 3, 14, 2); P(hl, 1, Y + 3, 14, 1); P(h, 4, Y, 8, 3); P(h, 5, Y - 2, 6, 2); P(h, 6, Y - 4, 4, 2); P(h, 7, Y - 5, 3, 1); P(h, 9, Y - 6, 2, 1);
+      P(ac, 4, Y + 2, 8, 1);
+    }
+    if (acc === 'Top hat') { const h = '#141016'; P(h, 2, Y + 2, 12, 2); P(h, 4, Y - 4, 8, 6); P('#2b232f', 5, Y - 4, 1, 6); P(ac, 4, Y, 8, 1); }
+    if (acc === 'Ribbon bow' && d !== 3) { P(ac, 9, Y + 1, 2, 2); P(ac, 12, Y + 1, 2, 2); P(shade(ac, -.3), 11, Y + 1, 1, 2); }
+    if (acc === 'Ribbon bow' && d === 3) { P(ac, 6, Y + 1, 2, 2); P(ac, 9, Y + 1, 2, 2); P(shade(ac, -.3), 8, Y + 1, 1, 2); }
+
+    if (mirror) ctx.restore();
+  }
+
+  let cache = null;
+  function sprites() {
+    if (cache) return cache;
+    cache = [];
+    for (let dir = 0; dir < 4; dir++) {
+      cache[dir] = [];
+      for (let f = 0; f < 4; f++) {
+        const c = document.createElement('canvas'); c.width = 16; c.height = 32;
+        draw(c.getContext('2d'), look, dir, f); cache[dir][f] = c;
+      }
+    }
+    return cache;
+  }
+  function setLook(next) { look = Object.assign({}, look, next); cache = null; }
+  function save() { store.set('nl_character', look); }
+  return { get look() { return look; }, setLook, save, sprites, draw, OPTIONS, hasSaved: () => !!store.get('nl_character', null) };
+})();
+
+/* ---------- wardrobe UI ---------- */
+const Wardrobe = (() => {
+  let dir = 0, first = false, anim = 0, raf = 0, draft = null;
+  const O = Character.OPTIONS;
+  const rows = [
+    ['hair', 'Hair', 'cycle', O.HAIR], ['hairC', 'Hair colour', 'swatch', O.HAIR_C], ['skin', 'Skin', 'swatch', O.SKIN],
+    ['outfit', 'Attire', 'cycle', O.OUTFIT], ['outfitC', 'Attire colour', 'swatch', O.OUTFIT_C],
+    ['acc', 'Accessory', 'cycle', O.ACC], ['accent', 'Accent', 'swatch', O.ACCENT_C],
+  ];
+  function paint() {
+    const c = $('#mirrorCanvas'), ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, 16, 32); Character.draw(ctx, draft, dir, Math.floor(anim / 12) % 4);
+  }
+  function loop() { anim++; paint(); raf = requestAnimationFrame(loop); }
+  function build() {
+    const box = $('#opts');
+    box.querySelectorAll('.opt').forEach(n => n.remove());
+    for (const [key, label, kind, list] of rows) {
+      const row = el('div', { class: 'opt' }, el('span', { text: label }));
+      if (kind === 'cycle') {
+        const out = el('output', { text: list[draft[key]] });
+        const step = d => { draft[key] = (draft[key] + d + list.length) % list.length; out.textContent = list[draft[key]]; };
+        row.append(el('div', { class: 'cycler' },
+          el('button', { class: 'btn icon', type: 'button', 'aria-label': 'Previous ' + label, text: '◀', onclick: () => step(-1) }), out,
+          el('button', { class: 'btn icon', type: 'button', 'aria-label': 'Next ' + label, text: '▶', onclick: () => step(1) })));
+      } else {
+        const sw = el('div', { class: 'swatches' });
+        list.forEach((col, i) => sw.append(el('button', { class: 'sw', type: 'button', style: `background:${col}`, 'aria-label': `${label} ${i + 1}`, 'aria-pressed': String(draft[key] === i),
+          onclick: e => { draft[key] = i; sw.querySelectorAll('.sw').forEach(b => b.setAttribute('aria-pressed', 'false')); e.currentTarget.setAttribute('aria-pressed', 'true'); } })));
+        row.append(sw);
+      }
+      box.append(row);
+    }
+  }
+  function open(isFirst) {
+    first = isFirst; draft = Object.assign({}, Character.look);
+    $('#wdTitle').textContent = first ? "Sign the Visitor's Ledger" : 'The Wardrobe';
+    $('#wdLead').textContent = first ? 'Welcome, wanderer. Before you enter, tell the ledger who you are.' : 'Choose how you appear among the stacks.';
+    $('#wdSave').textContent = first ? '🕯 Enter the library' : 'Save';
+    $('#charName').value = draft.name || '';
+    build(); $('#dlgWardrobe').showModal(); cancelAnimationFrame(raf); loop();
+  }
+  $('#turnL').onclick = () => { dir = [1, 3, 0, 2][dir]; };
+  $('#turnR').onclick = () => { dir = [2, 0, 3, 1][dir]; };
+  $('#randomize').onclick = () => {
+    for (const [key, , , list] of rows) draft[key] = Math.floor(Math.random() * list.length);
+    build();
+  };
+  $('#wdSave').onclick = () => {
+    draft.name = $('#charName').value.trim().slice(0, 16) || 'Wanderer';
+    Character.setLook(draft); Character.save(); $('#dlgWardrobe').close();
+    Scene.updateName();
+    Music.userGesture();
+    if (first) Scene.say(`Welcome, ${draft.name}. Mind the candles.`);
+  };
+  $('#dlgWardrobe').addEventListener('close', () => cancelAnimationFrame(raf));
+  $('#wardrobeBtn').addEventListener('click', () => open(false));
+  return { open };
+})();
+
+/* =====================================================================
+   MUSIC — procedural gothic harpsichord + organ + rain (WebAudio)
+   ===================================================================== */
+const Music = (() => {
+  let ac, master, bus, playing = false, started = false, timer, nextT = 0, step = 0, audioEl = null, rainGain;
+  let on = store.get('nl_music', true), vol = store.get('nl_vol', 0.55);
+  const BPM = 66, E8 = 60 / BPM / 2;
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  const CH = [[50, 53, 57, 62], [46, 50, 53, 58], [43, 46, 50, 55], [45, 49, 52, 57]]; // Dm Bb Gm A
+  const BASS = [38, 34, 43 - 12, 33];
+  const ARP = [0, 2, 1, 3, 2, 1, 2, 3];
+  // melody: [eighth index, midi, length in eighths]
+  const MEL = [[0, 69, 4], [4, 65, 2], [6, 67, 2], [8, 69, 6], [14, 74, 2],
+               [16, 70, 4], [20, 69, 2], [22, 67, 2], [24, 65, 6], [30, 62, 2],
+               [32, 67, 4], [36, 70, 2], [38, 74, 2], [40, 74, 4], [44, 76, 2], [46, 74, 2],
+               [48, 73, 4], [52, 69, 2], [54, 64, 2], [56, 69, 8]];
+  const melAt = new Map(MEL.map(m => [m[0], m]));
+
+  function impulse(sec, decay) {
+    const len = ac.sampleRate * sec, b = ac.createBuffer(2, len, ac.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
+    return b;
+  }
+  function noiseBuf(sec) { const len = ac.sampleRate * sec, b = ac.createBuffer(1, len, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; return b; }
+
+  function init() {
+    if (ac) return;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    ac = new AC();
+    master = ac.createGain(); master.gain.value = 0;
+    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3;
+    master.connect(comp).connect(ac.destination);
+    bus = ac.createGain();
+    const rev = ac.createConvolver(); rev.buffer = impulse(3.6, 2.4);
+    const wet = ac.createGain(); wet.gain.value = 0.42;
+    bus.connect(master); bus.connect(rev).connect(wet).connect(master);
+    // rain bed
+    const rn = ac.createBufferSource(); rn.buffer = noiseBuf(3); rn.loop = true;
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
+    rainGain = ac.createGain(); rainGain.gain.value = 0.035;
+    rn.connect(hp).connect(lp).connect(rainGain).connect(master); rn.start();
+  }
+
+  function harpsi(t, m, v = 0.07) {
+    const f = mtof(m), g = ac.createGain(), lp = ac.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(3800, t); lp.frequency.exponentialRampToValueAtTime(900, t + 0.8);
+    const o1 = ac.createOscillator(), o2 = ac.createOscillator(), g2 = ac.createGain();
+    o1.type = 'sawtooth'; o1.frequency.value = f; o2.type = 'square'; o2.frequency.value = f * 2; g2.gain.value = 0.25;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0008, t + 1.5);
+    o1.connect(lp); o2.connect(g2).connect(lp); lp.connect(g).connect(bus);
+    o1.start(t); o2.start(t); o1.stop(t + 1.6); o2.stop(t + 1.6);
+  }
+  function flute(t, m, dur, v = 0.075) {
+    const f = mtof(m), o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain(), g2 = ac.createGain();
+    const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 5.2; lg.gain.value = 7;
+    lfo.connect(lg); lg.connect(o.detune); lg.connect(o2.detune);
+    o.type = 'triangle'; o.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 2; g2.gain.value = 0.18;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.09); g.gain.setValueAtTime(v * 0.85, t + dur * 0.8); g.gain.exponentialRampToValueAtTime(0.0008, t + dur + 0.5);
+    o.connect(g); o2.connect(g2).connect(g); g.connect(bus);
+    [o, o2, lfo].forEach(x => { x.start(t); x.stop(t + dur + 0.6); });
+  }
+  function organ(t, ms, dur) {
+    for (const m of ms) for (const det of [-5, 5]) {
+      const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = mtof(m); o.detune.value = det;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.014, t + 1.2); g.gain.setValueAtTime(0.014, t + dur - 0.2); g.gain.linearRampToValueAtTime(0, t + dur + 1.4);
+      o.connect(g).connect(bus); o.start(t); o.stop(t + dur + 1.5);
+    }
+  }
+  function bass(t, m, dur) {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = 'triangle'; o.frequency.value = mtof(m + 12);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.11, t + 0.02); g.gain.exponentialRampToValueAtTime(0.04, t + dur * 0.7); g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(g).connect(bus); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function bell(t, m) {
+    for (const [r, v] of [[1, 0.05], [2.76, 0.02], [5.4, 0.008]]) {
+      const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = mtof(m) * r;
+      g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0005, t + 4);
+      o.connect(g).connect(bus); o.start(t); o.stop(t + 4.1);
+    }
+  }
+  function playStep(s, t) {
+    const i = s % 64, loopN = Math.floor(s / 64) % 4, c = Math.floor(i / 16);
+    harpsi(t, CH[c][ARP[i % 8]] + (i % 8 === 0 ? 0 : 0), i % 8 === 0 ? 0.08 : 0.055);
+    if (i % 8 === 0) bass(t, BASS[c], E8 * 8);
+    if (i % 16 === 0) organ(t, CH[c].slice(0, 3), E8 * 16);
+    if (loopN === 1 || loopN === 2) { const m = melAt.get(i); if (m) flute(t, m[1] + (loopN === 2 && i >= 32 ? 12 : 0), m[2] * E8); }
+    if (loopN === 3 && i % 16 === 0) bell(t, CH[c][3] + 12);
+  }
+  function tick() {
+    const ahead = document.hidden ? 1.6 : 0.25;
+    while (nextT < ac.currentTime + ahead) { playStep(step, nextT); nextT += E8; step++; }
+    timer = setTimeout(tick, document.hidden ? 400 : 40);
+  }
+  function startSynth() {
+    init(); if (!ac) return;
+    ac.resume();
+    if (!started) { started = true; nextT = ac.currentTime + 0.1; tick(); }
+    master.gain.cancelScheduledValues(ac.currentTime); master.gain.linearRampToValueAtTime(vol, ac.currentTime + 1.5);
+  }
+  function play() {
+    playing = true;
+    if (CONFIG.BGM_URL) {
+      if (!audioEl) { audioEl = new Audio(CONFIG.BGM_URL); audioEl.loop = true; }
+      audioEl.volume = vol; audioEl.play().catch(() => { playing = false; ui(); });
+    } else startSynth();
+    ui();
+  }
+  function pause() {
+    playing = false;
+    if (audioEl) audioEl.pause();
+    if (ac) { master.gain.cancelScheduledValues(ac.currentTime); master.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4); setTimeout(() => { if (!playing && ac) ac.suspend(); }, 500); }
+    ui();
+  }
+  function ui() {
+    $('#musicBtn').setAttribute('aria-pressed', String(playing));
+    $('#musicLbl').textContent = playing ? 'Music on' : 'Muted';
+    $('#musicBtn').firstChild.textContent = playing ? '♪ ' : '♪̸ ';
+  }
+  function thunder() {
+    if (!playing || !ac || CONFIG.BGM_URL) return;
+    const t = ac.currentTime + 0.6 + Math.random() * 1.2, n = ac.createBufferSource(); n.buffer = noiseBuf(4);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160;
+    const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t + 0.15); g.gain.exponentialRampToValueAtTime(0.001, t + 3.8);
+    n.connect(lp).connect(g).connect(master); n.start(t); n.stop(t + 4);
+  }
+  $('#musicBtn').addEventListener('click', () => { on = !playing; store.set('nl_music', on); on ? play() : pause(); });
+  const v = $('#vol'); v.value = vol;
+  v.addEventListener('input', () => {
+    vol = +v.value; store.set('nl_vol', vol);
+    if (audioEl) audioEl.volume = vol;
+    if (ac && playing) master.gain.setTargetAtTime(vol, ac.currentTime, 0.1);
+  });
+  // browsers only allow sound after the first click/keypress
+  function userGesture() { if (on && !playing) play(); }
+  ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, function once(e) {
+    if (e.target.closest && e.target.closest('#musicBtn')) return;
+    userGesture();
+  }, { once: true, capture: true }));
+  ui();
+  return { userGesture, thunder };
+})();
+
+/* =====================================================================
+   SCENE — the library room (320 × 180 pixel canvas)
+   ===================================================================== */
+const Scene = (() => {
+  const W = 320, H = 180, FLOOR = 104;
+  const cv = $('#scene'), ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const P = (c, x, y, w = 1, h = 1) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
+
+  const SHELF_X = [10, 50, 90, 192, 232, 272], SHELF_W = 38, SHELF_Y = 16, SHELF_H = 84;
+  const BOOK_C = ['#6b1e23', '#2e4a3a', '#1f2a44', '#8a6a2a', '#5a3a22', '#4a2340', '#3d4a52', '#7a3b1f', '#2b2f5a', '#55291f', '#a08a5a'];
+  const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const k = v => Math.max(0, Math.min(255, Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f))); return `rgb(${k(n >> 16)},${k(n >> 8 & 255)},${k(n & 255)})`; };
+
+  /* ---------- static background, drawn once ---------- */
+  const bg = document.createElement('canvas'); bg.width = W; bg.height = H;
+  (function drawBg() {
+    const b = bg.getContext('2d'); const R = rng(7);
+    const B = (c, x, y, w = 1, h = 1) => { b.fillStyle = c; b.fillRect(x, y, w, h); };
+    // stone wall
+    B('#120d17', 0, 0, W, FLOOR);
+    for (let y = 0; y < FLOOR; y += 8) for (let x = -(y / 8 % 2) * 8; x < W; x += 16) {
+      const c = ['#1d1525', '#21182a', '#1a1322', '#241b2e'][Math.floor(R() * 4)];
+      B(c, x + 1, y + 1, 15, 7); B('rgba(255,255,255,.03)', x + 1, y + 1, 15, 1);
+    }
+    // cornice
+    B('#0c0910', 0, 0, W, 5); B('#5a4418', 0, 5, W, 1); B('#0c0910', 0, 6, W, 2);
+    // floor planks
+    B('#1a0f0a', 0, FLOOR, W, H - FLOOR);
+    for (let y = FLOOR; y < H; y += 6) { let x = -Math.floor(R() * 30); while (x < W) { const len = 24 + Math.floor(R() * 26); const c = ['#2e1d14', '#33211a', '#2a1a11', '#36241a'][Math.floor(R() * 4)]; B(c, x + 1, y + 1, len - 1, 5); B('rgba(255,220,180,.04)', x + 1, y + 1, len - 1, 1); if (R() < .3) B('#24160e', x + 4 + Math.floor(R() * (len - 8)), y + 3, 2, 1); x += len; } }
+    // baseboard
+    B('#2c1a10', 0, FLOOR - 4, W, 4); B('#4a2e1c', 0, FLOOR - 4, W, 1); B('#0c0805', 0, FLOOR, W, 1);
+    // rug
+    const rx = 96, ry = 120, rw = 128, rh = 48;
+    B('#2a0c12', rx - 1, ry - 1, rw + 2, rh + 2); B('#4a1820', rx, ry, rw, rh); B('#7a5a24', rx + 3, ry + 3, rw - 6, 2); B('#7a5a24', rx + 3, ry + rh - 5, rw - 6, 2); B('#7a5a24', rx + 3, ry + 3, 2, rh - 6); B('#7a5a24', rx + rw - 5, ry + 3, 2, rh - 6);
+    B('#3a1219', rx + 7, ry + 7, rw - 14, rh - 14);
+    for (let i = 0; i < 5; i++) { const cx = rx + 24 + i * 20, cy = ry + rh / 2; for (let k = 0; k < 5; k++) { B('#6a4a1e', cx - k, cy - 4 + k, 1, 1); B('#6a4a1e', cx + k, cy - 4 + k, 1, 1); B('#6a4a1e', cx - k, cy + 4 - k, 1, 1); B('#6a4a1e', cx + k, cy + 4 - k, 1, 1); } B('#8a2a35', cx, cy, 1, 1); }
+    for (let y = ry + 2; y < ry + rh - 2; y += 2) { B('#b3a389', rx - 3, y, 2, 1); B('#b3a389', rx + rw + 1, y, 2, 1); }
+    // window stone frame (interior painted live)
+    b.fillStyle = '#3a3044'; b.beginPath(); b.moveTo(134, 96); b.lineTo(134, 32); b.arc(160, 32, 26, Math.PI, 0); b.lineTo(186, 96); b.closePath(); b.fill();
+    b.fillStyle = '#2a2232'; b.beginPath(); b.moveTo(136, 96); b.lineTo(136, 32); b.arc(160, 32, 24, Math.PI, 0); b.lineTo(184, 96); b.closePath(); b.fill();
+    B('#4a3e56', 130, 92, 60, 4); B('#5c4e68', 130, 92, 60, 1); B('#1a1420', 132, 96, 56, 2);
+    // shelves
+    SHELF_X.forEach((x, si) => {
+      const y = SHELF_Y, w = SHELF_W, h = SHELF_H;
+      B('#0b0705', x - 1, y - 6, w + 2, h + 7);
+      B('#3b2414', x, y - 2, w, h + 2); B('#4e3020', x, y - 2, w, 1);
+      B('#3b2414', x + 3, y - 4, w - 6, 2); B('#3b2414', x + w / 2 - 5, y - 6, 10, 2); B('#4e3020', x + w / 2 - 5, y - 6, 10, 1);
+      B('#160d09', x + 3, y + 2, w - 6, 60);
+      for (let r = 0; r < 4; r++) {
+        const top = y + 2 + r * 15;
+        let bx = x + 3;
+        while (bx < x + w - 4) {
+          if (R() < .07) { bx += 2 + Math.floor(R() * 3); continue; }
+          const bw = 2 + Math.floor(R() * 3); if (bx + bw > x + w - 3) break;
+          const bh = 9 + Math.floor(R() * 4);
+          const c = BOOK_C[Math.floor(R() * BOOK_C.length)];
+          B(c, bx, top + 13 - bh, bw, bh); B(shade(c, .15), bx, top + 13 - bh, 1, bh); B('rgba(0,0,0,.35)', bx + bw - 1, top + 13 - bh, 1, bh);
+          if (R() < .55) { B('#8a6a2a', bx, top + 13 - bh + 2, bw, 1); if (bh > 10) B('#8a6a2a', bx, top + 13 - 3, bw, 1); }
+          bx += bw;
+        }
+        if (R() < .25) { B('#d8d0c0', x + w - 9, top + 9, 4, 4); B('#1a1012', x + w - 8, top + 10, 1, 1); B('#1a1012', x + w - 6, top + 10, 1, 1); } // tiny skull
+        B('#4a2e1c', x + 2, top + 13, w - 4, 2); B('#6b4428', x + 2, top + 13, w - 4, 1);
+      }
+      // lower cabinet
+      const cy = y + 62;
+      B('#2c1a10', x + 3, cy, w - 6, h - 64); B('#3b2414', x + 5, cy + 2, (w - 12) / 2, h - 68); B('#3b2414', x + w / 2 + 1, cy + 2, (w - 12) / 2, h - 68);
+      B('#c9a24a', x + w / 2 - 2, cy + 8, 1, 2); B('#c9a24a', x + w / 2 + 1, cy + 8, 1, 2);
+      // brass plaque
+      B('#5a4418', x + w / 2 - 7, cy + 13, 14, 5); B('#c9a24a', x + w / 2 - 6, cy + 14, 12, 3); B('#e8c870', x + w / 2 - 6, cy + 14, 12, 1);
+      for (let k = 0; k < 4; k++) B('#5a4418', x + w / 2 - 4 + k * 3, cy + 15, 2, 1);
+      // candle on top
+      B('#e8dcc8', x + w / 2 - 1, y - 11, 2, 5); B('#b3a389', x + w / 2, y - 11, 1, 5); B('#8a6a2a', x + w / 2 - 2, y - 7, 4, 1);
+    });
+    // vignette
+    const g = b.createRadialGradient(160, 100, 60, 160, 100, 230); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
+    b.fillStyle = g; b.fillRect(0, 0, W, H);
+  })();
+
+  /* ---------- dynamic state ---------- */
+  const look = () => Character.look;
+  const player = { x: 160, y: 158, dir: 3, frame: 0, ft: 0, moving: false, target: null, after: null, stuck: 0 };
+  const cat = { x: 70, y: 150, dir: 1, mode: 'sit', t: 2, tx: 0, ty: 0, hearts: 0 };
+  const drops = Array.from({ length: 40 }, () => ({ x: 136 + Math.random() * 48, y: Math.random() * 100, s: 90 + Math.random() * 60 }));
+  const motes = Array.from({ length: 26 }, () => ({ x: Math.random() * W, y: 20 + Math.random() * 150, vx: (Math.random() - .5) * 3, vy: -1 - Math.random() * 2, a: Math.random() }));
+  let flash = 0, nextBolt = 8 + Math.random() * 14, t = 0, sayText = '', sayT = 0, counts = {};
+  const keys = new Set();
+
+  const SOLID = [
+    { x: 134, y: 136, w: 52, h: 10 },  // reading table
+    { x: 20, y: 150, w: 28, h: 10 },   // donation chest
+    { x: 54, y: 152, w: 12, h: 7 },    // tip jar
+    { x: 250, y: 146, w: 56, h: 12 },  // librarian desk
+    { x: 80, y: 113, w: 8, h: 5 }, { x: 232, y: 113, w: 8, h: 5 }, // candelabras
+  ];
+  const inSolid = (x, y) => SOLID.some(r => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h);
+  const clampX = x => Math.max(10, Math.min(310, x)), clampY = y => Math.max(112, Math.min(175, y));
+
+  function levelForShelf(i) { return CONFIG.LEVELS[i] || null; }
+  function interactables() {
+    const list = SHELF_X.map((x, i) => ({ kind: 'shelf', i, x: x + SHELF_W / 2, y: 114, r: 22, zone: p => p.y < 126 && p.x > x - 2 && p.x < x + SHELF_W + 2 }));
+    list.push({ kind: 'chest', x: 34, y: 166, r: 20, box: { x: 18, y: 136, w: 32, h: 26 } });
+    if (TIP_ON || DEMO) list.push({ kind: 'tip', x: 60, y: 166, r: 13, box: { x: 52, y: 138, w: 16, h: 22 } });
+    list.push({ kind: 'desk', x: 278, y: 166, r: 22, box: { x: 248, y: 118, w: 60, h: 40 } });
+    list.push({ kind: 'table', x: 160, y: 154, r: 18, box: { x: 132, y: 114, w: 56, h: 32 } });
+    list.push({ kind: 'window', x: 160, y: 114, r: 16, zone: p => p.y < 124 && p.x > 132 && p.x < 188, box: { x: 134, y: 6, w: 52, h: 90 } });
+    list.push({ kind: 'cat', x: cat.x, y: cat.y + 6, r: 16, box: { x: cat.x - 8, y: cat.y - 10, w: 16, h: 14 } });
+    SHELF_X.forEach((x, i) => list[i].box = { x, y: SHELF_Y - 12, w: SHELF_W, h: SHELF_H + 12 });
+    return list;
+  }
+  function nearest() {
+    let best = null, bd = 1e9;
+    for (const it of interactables()) {
+      const d = Math.hypot(player.x - it.x, player.y - it.y);
+      const ok = it.zone ? it.zone(player) : d < it.r;
+      if (ok && d < bd) { bd = d; best = it; }
+    }
+    return best;
+  }
+  function label(it) {
+    if (!it) return '';
+    if (it.kind === 'shelf') { const l = levelForShelf(it.i); return l ? `Browse the ${l} shelf · ${counts[l] || 0} notes` : 'Browse every shelf'; }
+    return { tip: "Drop a coin in the tip jar (Touch 'n Go)", chest: 'Donate notes into the chest', desk: "The archivist owl's desk — librarian sign-in", table: 'Read the open tome — see all notes', window: 'Gaze out at the rain', cat: 'Pet the library cat' }[it.kind];
+  }
+  function interact(it) {
+    if (!it) return;
+    if (it.kind === 'shelf') { const l = levelForShelf(it.i); setLevel(l || 'All'); say(l ? `You run a finger along the ${l} spines…` : 'Every shelf at once.'); $('#notesTop').scrollIntoView({ block: 'start' }); }
+    else if (it.kind === 'chest') openDonate();
+    else if (it.kind === 'tip') openTip();
+    else if (it.kind === 'desk') { say('Hoo. Hoo-ooh?'); openLibrarian(); }
+    else if (it.kind === 'table') { setLevel('All'); $('#notesTop').scrollIntoView({ block: 'start' }); }
+    else if (it.kind === 'window') { say(['The rain whispers against the glass.', 'Somewhere, a bell tolls midnight.', 'The moon is a pale coin tonight.', 'Lightning sketches the spires outside.'][Math.floor(Math.random() * 4)]); }
+    else if (it.kind === 'cat') { cat.hearts = 2; cat.mode = 'sit'; cat.t = 4; say(['The cat purrs, unbothered by your deadlines.', 'Mrrp. The cat approves of your studying.', 'The cat blinks slowly. You have been blessed.'][Math.floor(Math.random() * 3)]); }
+  }
+  function say(s) { sayText = s; sayT = 3.2; }
+
+  /* ---------- input ---------- */
+  const typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'); };
+  window.addEventListener('keydown', e => {
+    if (anyDialogOpen() || typing()) return;
+    const k = e.key.toLowerCase();
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) {
+      const r = cv.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < innerHeight) { e.preventDefault(); keys.add(k); player.target = null; }
+    }
+    if ((k === 'e' || k === 'enter') && !e.repeat) { const it = nearest(); if (it) { e.preventDefault(); interact(it); } }
+  });
+  window.addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+  window.addEventListener('blur', () => keys.clear());
+  cv.addEventListener('pointerdown', e => {
+    const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+    const hit = interactables().find(it => it.box && x >= it.box.x && x <= it.box.x + it.box.w && y >= it.box.y && y <= it.box.y + it.box.h);
+    if (hit) {
+      const near = nearest();
+      if (near && near.kind === hit.kind && near.i === hit.i) { interact(hit); return; }
+      player.target = { x: hit.x, y: hit.kind === 'shelf' || hit.kind === 'window' ? 116 : hit.y }; player.after = hit;
+    } else { player.target = { x: clampX(x), y: clampY(y) }; player.after = null; }
+    player.stuck = 0;
+  });
+  const promptEl = $('#prompt');
+  promptEl.addEventListener('click', () => { const it = nearest(); if (it) interact(it); });
+  promptEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const it = nearest(); if (it) interact(it); } });
+
+  /* ---------- update ---------- */
+  function update(dt) {
+    t += dt;
+    let vx = 0, vy = 0;
+    if (keys.has('arrowleft') || keys.has('a')) vx -= 1;
+    if (keys.has('arrowright') || keys.has('d')) vx += 1;
+    if (keys.has('arrowup') || keys.has('w')) vy -= 1;
+    if (keys.has('arrowdown') || keys.has('s')) vy += 1;
+    if (!vx && !vy && player.target) {
+      const dx = player.target.x - player.x, dy = player.target.y - player.y, d = Math.hypot(dx, dy);
+      if (d < 1.5) { player.target = null; const a = player.after; player.after = null; if (a) { const kindNow = nearest(); interact(kindNow && kindNow.kind === a.kind ? kindNow : a); } }
+      else { vx = dx / d; vy = dy / d; }
+    }
+    player.moving = !!(vx || vy);
+    if (player.moving) {
+      const len = Math.hypot(vx, vy), sp = 62 * dt; vx = vx / len * sp; vy = vy / len * sp;
+      const ox = player.x, oy = player.y;
+      const nx = clampX(player.x + vx), ny = clampY(player.y + vy);
+      if (!inSolid(nx, player.y)) player.x = nx;
+      if (!inSolid(player.x, ny)) player.y = ny;
+      if (Math.abs(vx) > Math.abs(vy)) player.dir = vx < 0 ? 1 : 2; else player.dir = vy < 0 ? 3 : 0;
+      player.ft += dt * 8; player.frame = Math.floor(player.ft) % 4;
+      if (player.target && Math.hypot(player.x - ox, player.y - oy) < sp * 0.2) { player.stuck += dt; if (player.stuck > 0.4) { player.target = null; player.after = null; } }
+    } else { player.frame = 0; player.ft = 0; }
+
+    // cat AI
+    cat.t -= dt; if (cat.hearts > 0) cat.hearts -= dt;
+    if (cat.mode === 'walk') {
+      const dx = cat.tx - cat.x, dy = cat.ty - cat.y, d = Math.hypot(dx, dy);
+      if (d < 1 || cat.t < 0) { cat.mode = 'sit'; cat.t = 3 + Math.random() * 6; }
+      else { const nx = cat.x + dx / d * 22 * dt, ny = cat.y + dy / d * 22 * dt; if (!inSolid(nx, ny)) { cat.x = nx; cat.y = ny; } else cat.t = -1; cat.dir = dx < 0 ? 1 : 2; }
+    } else if (cat.t < 0) { cat.mode = 'walk'; cat.tx = clampX(20 + Math.random() * 280); cat.ty = clampY(114 + Math.random() * 60); cat.t = 8; }
+
+    for (const d of drops) { d.y += d.s * dt; d.x -= d.s * dt * 0.15; if (d.y > 96) { d.y = Math.random() * -10; d.x = 136 + Math.random() * 56; } }
+    for (const m of motes) { m.x += m.vx * dt; m.y += m.vy * dt; m.a += dt * .5; if (m.y < 10) { m.y = 175; m.x = Math.random() * W; } }
+    nextBolt -= dt; if (nextBolt < 0) { flash = 1; nextBolt = 14 + Math.random() * 22; Music.thunder(); }
+    flash = Math.max(0, flash - dt * 1.6);
+    if (sayT > 0) sayT -= dt;
+  }
+
+  /* ---------- draw helpers ---------- */
+  function flame(x, y, seed) {
+    const f = Math.sin(t * 13 + seed * 7) + Math.sin(t * 7.3 + seed * 3);
+    const dx = f > 1 ? 1 : f < -1 ? -1 : 0;
+    P('#e2582b', x - 1, y, 3, 2); P('#ffb347', x, y - 1 + (f > .5 ? -1 : 0), 1, 3); P('#fff3b0', x, y + 1, 1, 1); if (dx) P('#ffb347', x + dx, y - 1, 1, 1);
+  }
+  const glows = [];
+  function glow(x, y, r, a = .22) { glows.push([x, y, r, a]); }
+  function drawWindow() {
+    ctx.save(); ctx.beginPath(); ctx.moveTo(138, 92); ctx.lineTo(138, 32); ctx.arc(160, 32, 22, Math.PI, 0); ctx.lineTo(182, 92); ctx.closePath(); ctx.clip();
+    const g = ctx.createLinearGradient(0, 8, 0, 92); g.addColorStop(0, flash > .1 ? '#8aa0d8' : '#0b1024'); g.addColorStop(1, flash > .1 ? '#5a6a9a' : '#1d2645');
+    ctx.fillStyle = g; ctx.fillRect(136, 8, 48, 86);
+    const R = rng(3); for (let i = 0; i < 16; i++) { const sx = 138 + R() * 44, sy = 10 + R() * 40; if (Math.sin(t * 2 + i) > -.3) P('#c8d0f0', sx, sy); }
+    // moon
+    ctx.fillStyle = '#e8e2c8'; ctx.beginPath(); ctx.arc(170, 26, 6, 0, 7); ctx.fill(); P('#c9c2a4', 168, 24, 2, 2); P('#c9c2a4', 172, 28, 1, 1);
+    // spires silhouette
+    ctx.fillStyle = flash > .1 ? '#2a3050' : '#090b16';
+    ctx.beginPath(); ctx.moveTo(136, 92); ctx.lineTo(136, 74); ctx.lineTo(142, 70); ctx.lineTo(146, 56); ctx.lineTo(150, 70); ctx.lineTo(156, 72); ctx.lineTo(158, 66); ctx.lineTo(164, 66); ctx.lineTo(166, 72); ctx.lineTo(172, 72); ctx.lineTo(176, 50); ctx.lineTo(180, 72); ctx.lineTo(184, 76); ctx.lineTo(184, 92); ctx.fill();
+    P('#e8b860', 147, 66); P('#e8b860', 175, 62);
+    ctx.strokeStyle = 'rgba(170,190,230,.55)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (const d of drops) { ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - 1, d.y + 4); } ctx.stroke();
+    ctx.restore();
+    // tracery & mullions
+    P('#2a2232', 159, 10, 2, 82); P('#2a2232', 138, 52, 44, 2);
+    ctx.strokeStyle = '#2a2232'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(160, 26, 6, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(149, 34, 11, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke(); ctx.beginPath(); ctx.arc(171, 34, 11, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+    // moonlight on floor
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(110,130,200,${0.06 + flash * .25})`;
+    ctx.beginPath(); ctx.moveTo(138, 104); ctx.lineTo(182, 104); ctx.lineTo(206, 160); ctx.lineTo(114, 160); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(110,130,200,${0.03 + flash * .1})`; ctx.fillRect(138, 92, 44, 12); ctx.restore();
+  }
+  function drawTable() {
+    P('#1a0f0a', 136, 144, 48, 2);
+    P('#2c1a10', 138, 134, 3, 10); P('#2c1a10', 179, 134, 3, 10);
+    P('#5a3820', 134, 126, 52, 8); P('#6e4628', 134, 126, 52, 1); P('#3a2414', 134, 133, 52, 2);
+    // open book
+    P('#e8dcc8', 150, 122, 9, 6); P('#d8ccb4', 160, 122, 9, 6); P('#8a7a5a', 159, 122, 1, 6); P('#4a2340', 149, 127, 21, 1);
+    for (let i = 0; i < 3; i++) { P('#9a8a70', 151, 123 + i * 2, 6, 1); P('#9a8a70', 161, 123 + i * 2, 6, 1); }
+    // skull + candle
+    P('#d8d0c0', 140, 121, 6, 5); P('#d8d0c0', 141, 126, 4, 1); P('#1a1012', 141, 123, 2, 1); P('#1a1012', 144, 123, 1, 1); P('#b3a389', 145, 121, 1, 5);
+    P('#e8dcc8', 177, 118, 2, 8); P('#8a6a2a', 175, 125, 6, 1); flame(178, 115, 1); glow(178, 116, 34, .26);
+    // quill
+    P('#eadfca', 171, 119, 1, 6); P('#eadfca', 172, 118, 1, 3); P('#1a1012', 170, 125, 3, 2);
+  }
+  function drawChest() {
+    P('rgba(0,0,0,.35)', 21, 158, 30, 2);
+    P('#4a2e1c', 22, 146, 28, 12); P('#3a2414', 22, 154, 28, 4);
+    P('#5a3820', 22, 140, 28, 6); P('#6e4628', 23, 139, 26, 1); P('#2c1a10', 22, 145, 28, 1);
+    P('#c9a24a', 26, 139, 2, 19); P('#c9a24a', 44, 139, 2, 19); P('#8a6a2a', 27, 139, 1, 19); P('#8a6a2a', 45, 139, 1, 19);
+    P('#c9a24a', 33, 144, 6, 5); P('#1a1012', 35, 146, 2, 2);
+    P('#0c0805', 30, 141, 12, 1);
+    // floating letter sparkle
+    const yy = 131 + Math.sin(t * 2.4) * 2;
+    P('#eadfca', 32, yy, 8, 5); P('#b3a389', 32, yy + 4, 8, 1); P('#7a1f2b', 35, yy + 2, 2, 2);
+    if (Math.sin(t * 3) > .6) { P('#fff3b0', 42, yy - 2); P('#fff3b0', 30, yy + 6); }
+  }
+  function drawJar() {
+    P('rgba(0,0,0,.35)', 54, 158, 12, 2);
+    P('#8a6a2a', 55, 156, 10, 2);                                   // little wooden stand
+    P('rgba(140,170,200,.22)', 56, 146, 8, 10);                     // glass
+    P('#c9a24a', 57, 151, 6, 5); P('#e8c870', 58, 151, 2, 1); P('#8a6a2a', 60, 153, 2, 1); P('#e8c870', 61, 154, 1, 1); // coins
+    P('#9ab0c4', 56, 146, 1, 10); P('#9ab0c4', 63, 146, 1, 10); P('#c8d8e8', 57, 147, 1, 3); // glass edges + shine
+    P('#5a3a22', 56, 144, 8, 2); P('#6e4628', 56, 144, 8, 1);       // cork
+    P('#eadfca', 57, 148, 6, 2); P('#7a1f2b', 59, 148, 2, 1);       // paper tag
+    const k = (t * 0.7) % 3;                                        // a coin dropping in every few seconds
+    if (k < 0.6) { const cy = 136 + k * 14; P('#e8c870', 59, cy, 2, 2); P('#fff3b0', 59, cy, 1, 1); }
+  }
+  function drawDesk() {
+    P('rgba(0,0,0,.35)', 250, 156, 58, 2);
+    P('#2c1a10', 252, 140, 52, 16); P('#3a2414', 255, 143, 21, 10); P('#3a2414', 280, 143, 21, 10); P('#c9a24a', 275, 147, 1, 2); P('#c9a24a', 280, 147, 1, 2);
+    P('#3a2414', 250, 132, 56, 8); P('#4e3020', 250, 132, 56, 1);
+    // banker's lamp
+    P('#c9a24a', 266, 127, 1, 5); P('#8a6a2a', 263, 131, 7, 1); P('#2e5a3a', 262, 123, 10, 4); P('#44805a', 262, 123, 10, 1);
+    glow(267, 130, 38, .24);
+    // book stack + bell + ink
+    P('#6b1e23', 282, 128, 12, 2); P('#1f2a44', 283, 126, 10, 2); P('#2e4a3a', 282, 124, 11, 2); P('#8a6a2a', 282, 125, 11, 1);
+    P('#c9a24a', 298, 129, 4, 3); P('#e8c870', 299, 128, 2, 1); P('#1a1012', 296, 131, 1, 1);
+    // owl on the lamp side
+    const blink = (t % 4) < .15;
+    P('#5a3a22', 254, 121, 7, 9); P('#7a5a3a', 255, 123, 5, 6); P('#e8dcc8', 255, 122, 2, 3); P('#e8dcc8', 258, 122, 2, 3);
+    P(blink ? '#5a3a22' : '#1a1012', 255, 123, 1, 1); P(blink ? '#5a3a22' : '#1a1012', 259, 123, 1, 1); P('#c9a24a', 257, 125, 1, 1);
+    P('#5a3a22', 254, 120, 1, 1); P('#5a3a22', 260, 120, 1, 1); P('#c9a24a', 255, 130, 2, 1); P('#c9a24a', 258, 130, 2, 1);
+  }
+  function drawCandelabra(x, base) {
+    P('rgba(0,0,0,.35)', x - 4, base, 9, 2);
+    P('#8a6a2a', x - 3, base - 2, 7, 2); P('#c9a24a', x - 2, base - 3, 5, 1);
+    P('#8a6a2a', x, base - 28, 1, 26); P('#c9a24a', x + 1, base - 28, 1, 26);
+    P('#8a6a2a', x - 5, base - 28, 12, 1); P('#8a6a2a', x - 5, base - 30, 1, 2); P('#8a6a2a', x + 6, base - 30, 1, 2);
+    for (const cx of [x - 5, x, x + 6]) { const h = cx === x ? 7 : 5; P('#e8dcc8', cx, base - 29 - h - (cx === x ? 2 : 0), 1, h); flame(cx, base - 33 - h - (cx === x ? 2 : 0), cx); }
+    glow(x, base - 38, 44, .3);
+  }
+  function drawCat() {
+    const x = Math.round(cat.x), y = Math.round(cat.y), f = cat.dir === 2;
+    const C = (dx, dy, w = 1, h = 1, c = '#0f0c12') => P(c, f ? x + (-dx - w + 1) : x + dx, y + dy, w, h);
+    P('rgba(0,0,0,.35)', x - 5, y + 1, 11, 1);
+    if (cat.mode === 'sit') {
+      C(-3, -6, 6, 7); C(-4, -9, 5, 4); C(-4, -10); C(-1, -10); C(2, -2, 3, 2); C(4, -5, 1, 3);
+      C(-3, -8, 1, 1, '#c9e86a'); C(-1, -8, 1, 1, '#c9e86a');
+    } else {
+      const s = Math.floor(t * 8) % 2;
+      C(-4, -5, 9, 4); C(-7, -8, 4, 4); C(-7, -9); C(-4, -9); C(5, -7, 1, 3); C(6, -8, 1, 1);
+      C(-3, -1, 1, 1 + s); C(-1, -1, 1, 2 - s); C(2, -1, 1, 1 + s); C(4, -1, 1, 2 - s);
+      C(-6, -7, 1, 1, '#c9e86a');
+    }
+    if (cat.hearts > 0) { const hy = y - 14 - (2 - cat.hearts) * 4; P('#d0405a', x - 1, hy, 1, 1); P('#d0405a', x + 1, hy, 1, 1); P('#d0405a', x - 1, hy + 1, 3, 1); P('#d0405a', x, hy + 2, 1, 1); }
+  }
+  function drawPlayer() {
+    const spr = Character.sprites()[player.dir][player.frame];
+    P('rgba(0,0,0,.4)', Math.round(player.x) - 5, Math.round(player.y), 10, 2);
+    ctx.drawImage(spr, Math.round(player.x) - 8, Math.round(player.y) - 31);
+  }
+
+  /* ---------- frame ---------- */
+  const nametag = $('#nametag');
+  function render() {
+    glows.length = 0;
+    ctx.drawImage(bg, 0, 0);
+    drawWindow();
+    SHELF_X.forEach((x, i) => { flame(x + SHELF_W / 2, SHELF_Y - 14, i); glow(x + SHELF_W / 2, SHELF_Y - 13, 26, .2); });
+    // shelf highlight when near
+    const near = nearest();
+    if (near && near.kind === 'shelf') { ctx.strokeStyle = `rgba(212,173,85,${.5 + Math.sin(t * 5) * .25})`; ctx.lineWidth = 1; ctx.strokeRect(SHELF_X[near.i] - .5, SHELF_Y - 6.5, SHELF_W + 1, SHELF_H + 7); }
+
+    const ents = [
+      { y: 146, d: drawTable }, { y: 158, d: drawChest }, ...(TIP_ON || DEMO ? [{ y: 158.5, d: drawJar }] : []), { y: 156, d: drawDesk },
+      { y: 117, d: () => drawCandelabra(84, 117) }, { y: 117, d: () => drawCandelabra(236, 117) },
+      { y: cat.y, d: drawCat }, { y: player.y, d: drawPlayer },
+    ].sort((a, b) => a.y - b.y);
+    for (const e of ents) e.d();
+
+    // darkness + candle glow
+    ctx.fillStyle = 'rgba(6,3,12,.38)'; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    glow(player.x, player.y - 14, 30, .1);
+    for (const [x, y, r, a] of glows) {
+      const fl = a * (0.85 + Math.sin(t * 9 + x) * .08 + Math.sin(t * 23 + y) * .05);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(255,170,80,${fl})`); g.addColorStop(1, 'rgba(255,140,60,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    for (const m of motes) { const a = (Math.sin(m.a) * .5 + .5) * .35; ctx.fillStyle = `rgba(255,230,180,${a})`; ctx.fillRect(m.x | 0, m.y | 0, 1, 1); }
+    if (flash > 0) { ctx.fillStyle = `rgba(150,170,255,${flash * .18})`; ctx.fillRect(0, 0, W, H); }
+    ctx.restore();
+
+    // overlays
+    const scale = cv.clientWidth / W;
+    nametag.textContent = look().name || 'Wanderer';
+    nametag.style.left = (player.x * scale) + 'px'; nametag.style.top = ((player.y - 33) * scale) + 'px';
+    const txt = sayT > 0 ? sayText : near ? label(near) : '';
+    if (txt) {
+      promptEl.classList.add('show');
+      if (promptEl.dataset.t !== txt + (sayT > 0)) {
+        promptEl.dataset.t = txt + (sayT > 0);
+        promptEl.replaceChildren(...(sayT > 0 ? [txt] : [el('kbd', { text: 'E' }), txt]));
+      }
+    } else promptEl.classList.remove('show');
+  }
+
+  let last = performance.now(), visible = true;
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(cv);
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (visible) { update(dt); render(); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  return {
+    say,
+    updateName() { render(); },
+    refreshCounts() { counts = {}; for (const n of state.notes) counts[n.level] = (counts[n.level] || 0) + 1; },
+  };
+})();
+
+/* =====================================================================
+   boot
+   ===================================================================== */
+(async function boot() {
+  document.title = CONFIG.SITE_TITLE;
+  $('#siteTitle').textContent = CONFIG.SITE_TITLE;
+  $('#siteSub').textContent = CONFIG.SITE_SUBTITLE;
+  $('#footName').textContent = CONFIG.SITE_TITLE;
+  if (DEMO) $('#demoBanner').classList.add('show');
+  if (!TIP_ON && !DEMO) $('#tipBtn').hidden = true;
+  renderAll();
+  if (!Character.hasSaved()) Wardrobe.open(true);
+  if (!DEMO) sb.auth.onAuthStateChange(() => { setTimeout(refreshAuth, 0); });
+  await Promise.all([loadNotes(), refreshAuth()]);
+  renderAll();
+  const m = location.hash.match(/^#note-(.+)$/);
+  if (m) { const n = state.notes.find(x => String(x.id) === decodeURIComponent(m[1])); if (n && !anyDialogOpen()) openNote(n); }
+})();
+</script>
+</body>
+</html>
